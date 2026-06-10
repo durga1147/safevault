@@ -190,7 +190,11 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
         createdBy: currentUser.uid
     });
 
-    const shareUrl = `${window.location.origin}/view.html?id=${shareDoc.id}`;
+// Safely extract the base folder path (handles localhost and GitHub Pages subfolders)
+const currentPath = window.location.href.split('?')[0].split('#')[0].replace('index.html', '');
+const baseUrl = currentPath.endsWith('/') ? currentPath : currentPath + '/';
+
+const shareUrl = `${baseUrl}view.html?id=${shareDoc.id}`;
     
     document.getElementById('share-results').classList.remove('hidden');
     const linkInput = document.getElementById('shareable-link');
