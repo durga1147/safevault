@@ -17,7 +17,7 @@ const db = getFirestore(app);
 
 let currentUser = null;
 let currentFolderId = null;
-let selectedLinkForShare = null;
+let currentFolderName = "";
 
 // DOM Elements
 const authScreen = document.getElementById('auth-screen');
@@ -27,22 +27,22 @@ const regFields = document.querySelectorAll('.auth-reg-field');
 const loginActions = document.getElementById('login-actions');
 const registerActions = document.getElementById('register-actions');
 
-// --- AUTHENTICATION UI TOGGLE ---
+// --- AUTHENTICATION INTERACTIVE TOGGLE ---
 document.getElementById('go-to-register').addEventListener('click', () => {
-    authTitle.textContent = "Create an Account";
+    authTitle.textContent = "Create Account";
     regFields.forEach(field => field.classList.remove('hidden'));
     loginActions.classList.add('hidden');
     registerActions.classList.remove('hidden');
 });
 
 document.getElementById('go-to-login').addEventListener('click', () => {
-    authTitle.textContent = "Welcome Back";
+    authTitle.textContent = "Sign In";
     regFields.forEach(field => field.classList.add('hidden'));
     loginActions.classList.remove('hidden');
     registerActions.classList.add('hidden');
 });
 
-// --- AUTH STATE OBSERVER ---
+// --- AUTHENTICATION OBSERVER NODE ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
@@ -57,13 +57,13 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- LOGIN & REGISTER LOGIC ---
+// --- TRANSACTION HANDLERS: AUTHENTICATION ---
 document.getElementById('login-btn').addEventListener('click', async () => {
     const e = document.getElementById('email').value.trim();
     const p = document.getElementById('password').value;
-    if (!e || !p) return alert("Please fill in all fields.");
+    if (!e || !p) return alert("All authorization vectors required.");
     try { await signInWithEmailAndPassword(auth, e, p); } 
-    catch (error) { alert("Login failed: " + error.message); }
+    catch (error) { alert("Auth Failure: " + error.message); }
 });
 
 document.getElementById('register-btn').addEventListener('click', async () => {
@@ -72,19 +72,18 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     const p = document.getElementById('password').value;
     const cp = document.getElementById('reg-confirm-password').value;
 
-    if (!name || !e || !p || !cp) return alert("Please fill in all fields.");
-    if (p !== cp) return alert("Passwords do not match!");
+    if (!name || !e || !p || !cp) return alert("All credentials fields mandatory.");
+    if (p !== cp) return alert("Password mismatch confirmed.");
     
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, e, p);
         await updateProfile(userCredential.user, { displayName: name });
-        // UI will update automatically via onAuthStateChanged
-    } catch (error) { alert("Registration failed: " + error.message); }
+    } catch (error) { alert("Registration Aborted: " + error.message); }
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-// --- FOLDER MANAGEMENT ---
+// --- IO SYSTEM: DIRECTORIES (FOLDERS) ---
 async function loadFolders() {
     const q = query(collection(db, "folders"), where("userId", "==", currentUser.uid));
     const querySnapshot = await getDocs(q);
@@ -95,13 +94,16 @@ async function loadFolders() {
         const li = document.createElement('li');
         li.textContent = doc.data().name;
         li.onclick = () => {
-            // Update UI Selection state
-            document.querySelectorAll('.folder-list li').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.ios-folder-list li').forEach(el => el.classList.remove('active'));
             li.classList.add('active');
             
             currentFolderId = doc.id;
-            document.getElementById('current-folder-title').textContent = doc.data().name;
-            document.getElementById('add-link-form').style.display = 'flex'; // Show input form
+            currentFolderName = doc.data().name;
+            
+            document.getElementById('current-folder-title').textContent = currentFolderName;
+            document.getElementById('add-link-form').style.display = 'flex'; 
+            document.getElementById('share-folder-btn').style.display = 'inline-block';
+            
             loadLinks(currentFolderId);
         };
         list.appendChild(li);
@@ -117,14 +119,14 @@ document.getElementById('create-folder-btn').addEventListener('click', async () 
     loadFolders();
 });
 
-// --- LINK MANAGEMENT ---
+// --- IO SYSTEM: RECORD MANIFESTS (LINKS) ---
 document.getElementById('save-link-btn').addEventListener('click', async () => {
-    if (!currentFolderId) return alert("Select a directory first");
+    if (!currentFolderId) return alert("Target reference directory missing.");
     
     const title = document.getElementById('link-title').value.trim();
     let url = document.getElementById('link-url').value.trim();
     
-    if (!title || !url) return alert("Please provide both a title and a URL");
+    if (!title || !url) return alert("Comprehensive meta parsing requires both fields.");
     if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
 
     await addDoc(collection(db, "saved_links"), {
@@ -141,13 +143,13 @@ document.getElementById('save-link-btn').addEventListener('click', async () => {
 
 async function loadLinks(folderId) {
     const linkGrid = document.getElementById('link-grid');
-    linkGrid.innerHTML = '<div class="empty-state"><p>Loading secure links...</p></div>';
+    linkGrid.innerHTML = '<div class="panel-empty-state"><p>Accessing secure vectors...</p></div>';
 
     const q = query(collection(db, "saved_links"), where("folderId", "==", folderId));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-        linkGrid.innerHTML = '<div class="empty-state"><p>No links in this directory.</p></div>';
+        linkGrid.innerHTML = '<div class="panel-empty-state"><p>No routes preserved in this directory partition.</p></div>';
         return;
     }
 
@@ -155,46 +157,39 @@ async function loadLinks(folderId) {
     querySnapshot.forEach((doc) => {
         const data = doc.data();
         const card = document.createElement('div');
-        card.className = 'link-card';
+        card.className = 'ios-link-card';
         card.innerHTML = `
             <h4>${data.title}</h4>
-            <a href="${data.url}" target="_blank" class="url">${data.url}</a>
-            <div class="card-actions">
-                <button class="btn outline small share-btn">Create Gateway</button>
-            </div>
+            <a href="${data.url}" target="_blank" class="destination-url">${data.url}</a>
         `;
-
-        card.querySelector('.share-btn').addEventListener('click', () => {
-            selectedLinkForShare = { id: doc.id, title: data.title, url: data.url };
-            document.getElementById('share-link-name').textContent = data.title;
-            
-            // Reset modal state
-            document.getElementById('share-pin').value = '';
-            document.getElementById('share-results').classList.add('hidden');
-            document.getElementById('share-modal').classList.remove('hidden');
-        });
         linkGrid.appendChild(card);
     });
 }
 
-// --- SHARING GATEWAY ---
+// --- SECURE COMPILING SYSTEM: GATEWAYS ---
+document.getElementById('share-folder-btn').addEventListener('click', () => {
+    if (!currentFolderId) return;
+    document.getElementById('share-link-name').textContent = `📁 Directory: ${currentFolderName}`;
+    document.getElementById('share-pin').value = '';
+    document.getElementById('share-results').classList.add('hidden');
+    document.getElementById('share-modal').classList.remove('hidden');
+});
+
 document.getElementById('generate-link-btn').addEventListener('click', async () => {
-    if(!selectedLinkForShare) return;
+    if(!currentFolderId) return;
     const pin = document.getElementById('share-pin').value;
     
     const shareDoc = await addDoc(collection(db, "shared_gateways"), {
-        targetUrl: selectedLinkForShare.url,
-        linkTitle: selectedLinkForShare.title,
+        folderId: currentFolderId,
+        folderName: currentFolderName,
         pin: pin || null,
         clicks: 0,
         createdBy: currentUser.uid
     });
 
-// Safely extract the base folder path (handles localhost and GitHub Pages subfolders)
-const currentPath = window.location.href.split('?')[0].split('#')[0].replace('index.html', '');
-const baseUrl = currentPath.endsWith('/') ? currentPath : currentPath + '/';
-
-const shareUrl = `${baseUrl}view.html?id=${shareDoc.id}`;
+    const currentUrl = window.location.href;
+    const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+    const shareUrl = `${baseUrl}view.html?id=${shareDoc.id}`;
     
     document.getElementById('share-results').classList.remove('hidden');
     const linkInput = document.getElementById('shareable-link');
@@ -205,17 +200,16 @@ const shareUrl = `${baseUrl}view.html?id=${shareDoc.id}`;
         text: shareUrl,
         width: 140,
         height: 140,
-        colorDark : "#2D2C2A",
+        colorDark : "#1D1D1F",
         colorLight : "#ffffff",
     });
     
     document.getElementById('copy-link-btn').onclick = () => {
         navigator.clipboard.writeText(shareUrl);
-        alert("Gateway URL copied to clipboard!");
+        alert("Secure route string mapped to clipboard.");
     };
 });
 
-// Close Modal
 const closeModal = () => document.getElementById('share-modal').classList.add('hidden');
 document.getElementById('close-modal-btn').addEventListener('click', closeModal);
 document.getElementById('modal-backdrop').addEventListener('click', closeModal);
