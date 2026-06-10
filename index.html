@@ -11,14 +11,27 @@
 
     <!-- Authentication Screen -->
     <div id="auth-screen" class="screen active">
-        <div class="card">
-            <h2>Secure Link Vault</h2>
-            <input type="email" id="email" placeholder="Email Address">
-            <input type="password" id="password" placeholder="Password">
+    <div class="card" id="auth-card">
+        <h2 id="auth-title">Login to Secure Vault</h2>
+        
+        <input type="text" id="reg-name" class="auth-reg-field hidden" placeholder="Full Name">
+        
+        <input type="email" id="email" placeholder="Email Address">
+        <input type="password" id="password" placeholder="Password">
+        
+        <input type="password" id="reg-confirm-password" class="auth-reg-field hidden" placeholder="Confirm Password">
+        
+        <div id="login-actions">
             <button id="login-btn" class="btn primary">Login</button>
-            <button id="register-btn" class="btn secondary">Create Account</button>
+            <p class="toggle-text">Don't have an account? <span id="go-to-register">Register here</span></p>
+        </div>
+        
+        <div id="register-actions" class="hidden">
+            <button id="register-btn" class="btn primary">Create Account</button>
+            <p class="toggle-text">Already have an account? <span id="go-to-login">Login here</span></p>
         </div>
     </div>
+</div>
 
     <!-- Dashboard Screen -->
     <div id="dashboard-screen" class="screen">
