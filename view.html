@@ -2,23 +2,45 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Secure Link Access</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkVault | Secured Gateway</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Specific tweaks for the standalone view page */
+        .gateway-container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 1.5rem; text-align: center; }
+        .gateway-card { padding: 3rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; }
+        .lock-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+    </style>
 </head>
 <body>
-    <div class="screen active" style="justify-content: center; align-items: center;">
-        <div class="card" id="unlock-card">
-            <h2>Secured Link</h2>
-            <div id="pin-section" class="hidden">
-                <p>This link is protected. Enter PIN to access.</p>
-                <input type="password" id="access-pin" placeholder="Enter PIN">
+    <div class="screen active" style="justify-content: center; align-items: center; padding: 1rem;">
+        
+        <div class="gateway-container" id="unlock-container">
+            <div class="brand">
+                <div class="logo-mark"></div>
+                <h2>LinkVault Gateway</h2>
             </div>
-            <button id="access-btn" class="btn primary">Unlock Link</button>
+            
+            <div class="card gateway-card">
+                <div class="lock-icon">🔒</div>
+                <h3>Secured Destination</h3>
+                
+                <div id="pin-section" class="input-group hidden" style="width: 100%;">
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">The creator has protected this link. Enter the PIN to proceed.</p>
+                    <input type="password" id="access-pin" class="input-field" placeholder="Enter Access PIN" style="text-align: center; font-size: 1.2rem; letter-spacing: 0.2em;">
+                </div>
+                
+                <button id="access-btn" class="btn primary full-width">Proceed to Link</button>
+            </div>
         </div>
 
-        <div class="card hidden" id="destination-card">
-            <h2 id="display-link-title"></h2>
-            <a id="visit-link" href="#" target="_blank" class="btn primary">Visit Link</a>
+        <div class="gateway-container hidden" id="destination-container">
+            <div class="card gateway-card">
+                <div class="lock-icon">🔓</div>
+                <h3 id="display-link-title" style="word-break: break-all;"></h3>
+                <p style="color: var(--text-secondary);">Access granted. You are now leaving the secure gateway.</p>
+                <a id="visit-link" href="#" target="_blank" class="btn primary full-width">Visit Destination</a>
+            </div>
         </div>
     </div>
 
@@ -27,8 +49,12 @@
         import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         
         const firebaseConfig = {
-            // PASTE YOUR CONFIG HERE
+            // ⚠️ PASTE YOUR FIREBASE CONFIGURATION HERE ⚠️
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID"
         };
+        
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
@@ -41,27 +67,40 @@
             const docRef = doc(db, "shared_gateways", linkId);
             const docSnap = await getDoc(docRef);
 
-            if (!docSnap.exists()) return alert("Link expired or deleted");
-
-            const data = docSnap.data();
-            const pinInput = document.getElementById('access-pin').value;
-
-            if (data.pin && data.pin !== pinInput) {
-                document.getElementById('pin-section').classList.remove('hidden');
-                if(pinInput) alert("Incorrect PIN");
+            if (!docSnap.exists()) {
+                document.querySelector('.gateway-card').innerHTML = "<h3>Link Expired or Deleted</h3><p>This gateway is no longer active.</p>";
                 return;
             }
 
-            // Correct PIN: Update Analytics and show link
+            const data = docSnap.data();
+            const pinSection = document.getElementById('pin-section');
+            const pinInput = document.getElementById('access-pin').value;
+
+            // If PIN is required but section isn't shown yet, show it and stop
+            if (data.pin && pinSection.classList.contains('hidden')) {
+                pinSection.classList.remove('hidden');
+                return; 
+            }
+
+            // If PIN section is shown, verify the input
+            if (data.pin && data.pin !== pinInput) {
+                alert("Incorrect PIN");
+                document.getElementById('access-pin').value = '';
+                return;
+            }
+
+            // Correct PIN or No PIN required
             await updateDoc(docRef, { clicks: increment(1) });
 
-            document.getElementById('unlock-card').classList.add('hidden');
-            document.getElementById('destination-card').classList.remove('hidden');
+            document.getElementById('unlock-container').classList.add('hidden');
+            document.getElementById('destination-container').classList.remove('hidden');
             document.getElementById('display-link-title').textContent = data.linkTitle;
             document.getElementById('visit-link').href = data.targetUrl;
         }
 
         document.getElementById('access-btn').addEventListener('click', verifyAndLoad);
+        
+        // Initial check on load
         verifyAndLoad();
     </script>
 </body>
