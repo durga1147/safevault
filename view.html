@@ -3,52 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkVault | Secured Gateway</title>
+    <title>LinkVault | Secure Destination Channel</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Specific tweaks for the standalone view page */
-        .gateway-container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 1.5rem; text-align: center; }
-        .gateway-card { padding: 3rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; }
-        .lock-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+        .gateway-shell { width: 100%; max-width: 520px; margin: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; position: relative; z-index: 20; }
+        .centered-card { padding: 3.5rem 2.5rem; text-align: center; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; }
+        .secure-badge { font-size: 3.5rem; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.06)); }
+        .stacked-list-box { width: 100%; text-align: left; padding: 2.5rem 2rem; }
     </style>
 </head>
 <body>
-    <div class="screen active" style="justify-content: center; align-items: center; padding: 1rem;">
-        
-        <div class="gateway-container" id="unlock-container">
-            <div class="brand">
-                <div class="logo-mark"></div>
-                <h2>LinkVault Gateway</h2>
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
+
+    <div class="screen active" style="justify-content: center; align-items: center; min-height: 100vh;">
+        <div class="gateway-shell" id="unlock-container">
+            <div class="brand-header">
+                <div class="ios-logo">🛡️</div>
+                <h1>Secure Gateway</h1>
             </div>
             
-            <div class="card gateway-card">
-                <div class="lock-icon">🔒</div>
-                <h3>Secured Destination</h3>
+            <div class="glass-card centered-card">
+                <div class="secure-badge">🔒</div>
+                <h3>Authentication Verified Route</h3>
                 
-                <div id="pin-section" class="input-group hidden" style="width: 100%;">
-                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">The creator has protected this link. Enter the PIN to proceed.</p>
-                    <input type="password" id="access-pin" class="input-field" placeholder="Enter Access PIN" style="text-align: center; font-size: 1.2rem; letter-spacing: 0.2em;">
+                <div id="pin-section" class="form-group hidden" style="width: 100%;">
+                    <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.95rem;">Enter credential vector payload access PIN:</p>
+                    <input type="password" id="access-pin" class="ios-input center-text" placeholder="••••" style="font-size: 1.5rem; letter-spacing: 0.3em;">
                 </div>
                 
-                <button id="access-btn" class="btn primary full-width">Proceed to Link</button>
+                <button id="access-btn" class="ios-btn action-primary full">Decrypt Secure Route</button>
             </div>
         </div>
 
-        <div class="gateway-container hidden" id="destination-container">
-            <div class="card gateway-card">
-                <div class="lock-icon">🔓</div>
-                <h3 id="display-link-title" style="word-break: break-all;"></h3>
-                <p style="color: var(--text-secondary);">Access granted. You are now leaving the secure gateway.</p>
-                <a id="visit-link" href="#" target="_blank" class="btn primary full-width">Visit Destination</a>
+        <div class="gateway-shell hidden" id="destination-container">
             </div>
-        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, increment, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         
-        const firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
   authDomain: "vault-98419.firebaseapp.com",
   projectId: "vault-98419",
@@ -64,45 +60,103 @@
         const linkId = urlParams.get('id');
 
         async function verifyAndLoad() {
-            if (!linkId) return alert("Invalid Gateway Link");
-            
-            const docRef = doc(db, "shared_gateways", linkId);
-            const docSnap = await getDoc(docRef);
+            try {
+                if (!linkId) return alert("Invalid Gateway Token.");
+                
+                const docRef = doc(db, "shared_gateways", linkId);
+                const docSnap = await getDoc(docRef);
 
-            if (!docSnap.exists()) {
-                document.querySelector('.gateway-card').innerHTML = "<h3>Link Expired or Deleted</h3><p>This gateway is no longer active.</p>";
-                return;
+                if (!docSnap.exists()) {
+                    document.querySelector('.centered-card').innerHTML = "<h3>Gateway Link De-provisioned</h3><p>This share tracking route hash is dead or expired.</p>";
+                    return;
+                }
+
+                const data = docSnap.data();
+                const pinSection = document.getElementById('pin-section');
+                const pinInput = document.getElementById('access-pin').value;
+
+                if (data.pin && pinSection.classList.contains('hidden')) {
+                    pinSection.classList.remove('hidden');
+                    return; 
+                }
+
+                if (data.pin && data.pin !== pinInput) {
+                    alert("Credential matrix validation error.");
+                    document.getElementById('access-pin').value = '';
+                    return;
+                }
+
+                // Database Mutation: Safely write hit metric logs
+                try { await updateDoc(docRef, { clicks: increment(1) }); } 
+                catch (e) { console.warn("Analytics pipeline metrics dropped via cloud config permissions context.", e); }
+
+                document.getElementById('unlock-container').classList.add('hidden');
+                const destContainer = document.getElementById('destination-container');
+                destContainer.classList.remove('hidden');
+                
+                destContainer.innerHTML = `
+                    <div class="glass-card stacked-list-box">
+                        <h2 style="font-weight:700; font-size:1.4rem; margin-bottom:0.25rem;">📁 ${data.folderName}</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">Verified Shared Directory Map Channels:</p>
+                        <div id="gateway-links-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <p style="color: var(--text-muted); font-size:0.9rem;">Assembling pipeline index streams...</p>
+                        </div>
+                    </div>
+                `;
+
+                // Sub-Collection Resolution Query
+                const linksQuery = query(collection(db, "saved_links"), where("folderId", "==", data.folderId));
+                const linksSnapshot = await getDocs(linksQuery);
+                const listWrapper = document.getElementById('gateway-links-list');
+                listWrapper.innerHTML = "";
+
+                if(linksSnapshot.empty) {
+                    listWrapper.innerHTML = `<p style="color: var(--text-muted); font-style: italic; font-size:0.95rem;">Partition is empty.</p>`;
+                    return;
+                }
+
+                linksSnapshot.forEach(linkDoc => {
+                    const linkData = linkDoc.data();
+                    const linkItem = document.createElement('a');
+                    linkItem.href = linkData.url;
+                    linkItem.target = "_blank";
+                    linkItem.style.cssText = `
+                        display: block;
+                        padding: 1rem 1.25rem;
+                        background: rgba(255,255,255,0.4);
+                        border: 1px solid rgba(0,0,0,0.03);
+                        border-radius: 14px;
+                        text-decoration: none;
+                        color: var(--text-dark);
+                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    `;
+                    
+                    linkItem.innerHTML = `
+                        <div style="font-weight: 600; font-size: 1.05rem; color: var(--text-dark); margin-bottom: 0.15rem;">${linkData.title}</div>
+                        <div style="color: var(--system-blue); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">${linkData.url}</div>
+                    `;
+
+                    linkItem.addEventListener('mouseenter', () => {
+                        linkItem.style.backgroundColor = "rgba(255,255,255,0.75)";
+                        linkItem.style.transform = "translateX(6px)";
+                        linkItem.style.boxShadow = "0 4px 12px rgba(0,0,0,0.02)";
+                    });
+                    linkItem.addEventListener('mouseleave', () => {
+                        linkItem.style.backgroundColor = "rgba(255,255,255,0.4)";
+                        linkItem.style.transform = "none";
+                        linkItem.style.boxShadow = "none";
+                    });
+
+                    listWrapper.appendChild(linkItem);
+                });
+                
+            } catch (globalError) {
+                console.error("Critical Exception Stack Intercepted: ", globalError);
+                alert("Decryption pipeline failure: " + globalError.message);
             }
-
-            const data = docSnap.data();
-            const pinSection = document.getElementById('pin-section');
-            const pinInput = document.getElementById('access-pin').value;
-
-            // If PIN is required but section isn't shown yet, show it and stop
-            if (data.pin && pinSection.classList.contains('hidden')) {
-                pinSection.classList.remove('hidden');
-                return; 
-            }
-
-            // If PIN section is shown, verify the input
-            if (data.pin && data.pin !== pinInput) {
-                alert("Incorrect PIN");
-                document.getElementById('access-pin').value = '';
-                return;
-            }
-
-            // Correct PIN or No PIN required
-            await updateDoc(docRef, { clicks: increment(1) });
-
-            document.getElementById('unlock-container').classList.add('hidden');
-            document.getElementById('destination-container').classList.remove('hidden');
-            document.getElementById('display-link-title').textContent = data.linkTitle;
-            document.getElementById('visit-link').href = data.targetUrl;
         }
 
         document.getElementById('access-btn').addEventListener('click', verifyAndLoad);
-        
-        // Initial check on load
         verifyAndLoad();
     </script>
 </body>
