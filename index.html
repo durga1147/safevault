@@ -3,84 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Link Vault</title>
+    <title>LinkVault | Secure Bookmarks</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Authentication Screen -->
     <div id="auth-screen" class="screen active">
-    <div class="card" id="auth-card">
-        <h2 id="auth-title">Login to Secure Vault</h2>
-        
-        <input type="text" id="reg-name" class="auth-reg-field hidden" placeholder="Full Name">
-        
-        <input type="email" id="email" placeholder="Email Address">
-        <input type="password" id="password" placeholder="Password">
-        
-        <input type="password" id="reg-confirm-password" class="auth-reg-field hidden" placeholder="Confirm Password">
-        
-        <div id="login-actions">
-            <button id="login-btn" class="btn primary">Login</button>
-            <p class="toggle-text">Don't have an account? <span id="go-to-register">Register here</span></p>
-        </div>
-        
-        <div id="register-actions" class="hidden">
-            <button id="register-btn" class="btn primary">Create Account</button>
-            <p class="toggle-text">Already have an account? <span id="go-to-login">Login here</span></p>
+        <div class="auth-container">
+            <div class="brand">
+                <div class="logo-mark"></div>
+                <h2>LinkVault</h2>
+                <p>Secure, trackable link sharing.</p>
+            </div>
+            
+            <div class="card" id="auth-card">
+                <h3 id="auth-title">Welcome Back</h3>
+                
+                <input type="text" id="reg-name" class="auth-reg-field hidden input-field" placeholder="Full Name">
+                <input type="email" id="email" class="input-field" placeholder="Email Address">
+                <input type="password" id="password" class="input-field" placeholder="Password">
+                <input type="password" id="reg-confirm-password" class="auth-reg-field hidden input-field" placeholder="Confirm Password">
+                
+                <div id="login-actions" class="auth-actions">
+                    <button id="login-btn" class="btn primary full-width">Sign In</button>
+                    <p class="toggle-text">New to LinkVault? <span id="go-to-register">Create an account</span></p>
+                </div>
+                
+                <div id="register-actions" class="auth-actions hidden">
+                    <button id="register-btn" class="btn primary full-width">Create Account</button>
+                    <p class="toggle-text">Already have an account? <span id="go-to-login">Sign in</span></p>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-    <!-- Dashboard Screen -->
     <div id="dashboard-screen" class="screen">
         <aside class="sidebar">
-            <h3>My Folders</h3>
-            <ul id="folder-list"></ul>
-            <div class="new-folder">
-                <input type="text" id="new-folder-name" placeholder="Folder Name">
-                <button id="create-folder-btn" class="btn primary small">+ Add</button>
+            <div class="sidebar-header">
+                <div class="logo-mark small"></div>
+                <h3>LinkVault</h3>
             </div>
-            <button id="logout-btn" class="btn secondary small" style="margin-top: auto;">Logout</button>
+            
+            <div class="sidebar-section">
+                <h4>MY DIRECTORIES</h4>
+                <ul id="folder-list" class="folder-list"></ul>
+            </div>
+
+            <div class="new-folder-wrapper">
+                <input type="text" id="new-folder-name" class="input-field small" placeholder="New folder name">
+                <button id="create-folder-btn" class="btn outline small full-width">Create Folder</button>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-greeting">User</div>
+                <button id="logout-btn" class="btn text-btn small">Sign Out</button>
+            </div>
         </aside>
 
-        <main class="content">
-            <header>
-                <h2 id="current-folder-title">Select a Folder</h2>
-                <!-- UPDATED: Replaced file input with link inputs -->
-                <div class="upload-area" style="display: flex; gap: 10px;">
-                    <input type="text" id="link-title" placeholder="Link Title (e.g. My Portfolio)">
-                    <input type="url" id="link-url" placeholder="https://...">
-                    <button id="save-link-btn" class="btn primary">Save Link</button>
+        <main class="main-content">
+            <header class="topbar">
+                <h2 id="current-folder-title">Select a Directory</h2>
+                
+                <div class="add-link-form" id="add-link-form" style="display: none;">
+                    <input type="text" id="link-title" class="input-field" placeholder="Link Title (e.g. Portfolio)">
+                    <input type="url" id="link-url" class="input-field" placeholder="https://...">
+                    <button id="save-link-btn" class="btn primary">Secure Link</button>
                 </div>
             </header>
-            <div class="file-grid" id="link-grid">
-                <!-- Links will render here -->
+
+            <div class="content-area">
+                <div class="file-grid" id="link-grid">
+                    <div class="empty-state">
+                        <p>Select a folder to view or add links.</p>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
-    <!-- Share Modal -->
     <div id="share-modal" class="modal hidden">
+        <div class="modal-backdrop" id="modal-backdrop"></div>
         <div class="modal-content card">
-            <h3>Share Link</h3>
-            <p id="share-link-name"></p>
-            
-            <div class="input-group">
-                <label>Set a PIN (Optional)</label>
-                <input type="password" id="share-pin" placeholder="Enter a 4-6 digit PIN">
+            <div class="modal-header">
+                <h3>Create Share Gateway</h3>
+                <button id="close-modal-btn" class="icon-btn">✕</button>
             </div>
             
-            <button id="generate-link-btn" class="btn primary">Generate Gateway & QR</button>
+            <div class="modal-body">
+                <p class="target-link-name" id="share-link-name"></p>
+                
+                <div class="input-group">
+                    <label>Access PIN (Optional)</label>
+                    <input type="password" id="share-pin" class="input-field" placeholder="4-6 digit PIN">
+                    <small>Leave blank for open access.</small>
+                </div>
+                
+                <button id="generate-link-btn" class="btn primary full-width">Generate Secure Gateway</button>
 
-            <div id="share-results" class="hidden">
-                <input type="text" id="shareable-link" readonly>
-                <button id="copy-link-btn" class="btn secondary small">Copy</button>
-                <div id="qrcode-container"></div>
-                <p class="stats">Clicks tracked: <span id="click-count">0</span></p>
+                <div id="share-results" class="share-results hidden">
+                    <div class="link-display">
+                        <input type="text" id="shareable-link" class="input-field" readonly>
+                        <button id="copy-link-btn" class="btn outline">Copy</button>
+                    </div>
+                    <div class="qr-wrapper">
+                        <div id="qrcode-container"></div>
+                    </div>
+                </div>
             </div>
-            <button id="close-modal-btn" class="btn text-btn">Close</button>
         </div>
     </div>
 
