@@ -3,110 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkVault | Secure Bookmarks</title>
+    <title>LinkVault | Premium iOS Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
 
     <div id="auth-screen" class="screen active">
-        <div class="auth-container">
-            <div class="brand">
-                <div class="logo-mark"></div>
-                <h2>LinkVault</h2>
-                <p>Secure, trackable link sharing.</p>
+        <div class="auth-wrapper">
+            <div class="brand-header">
+                <div class="ios-logo">🔗</div>
+                <h1>LinkVault</h1>
+                <p>Secure Shared Directories</p>
             </div>
             
-            <div class="card" id="auth-card">
-                <h3 id="auth-title">Welcome Back</h3>
+            <div class="glass-card auth-card" id="auth-card">
+                <h3 id="auth-title">Sign In</h3>
                 
-                <input type="text" id="reg-name" class="auth-reg-field hidden input-field" placeholder="Full Name">
-                <input type="email" id="email" class="input-field" placeholder="Email Address">
-                <input type="password" id="password" class="input-field" placeholder="Password">
-                <input type="password" id="reg-confirm-password" class="auth-reg-field hidden input-field" placeholder="Confirm Password">
+                <input type="text" id="reg-name" class="auth-reg-field hidden ios-input" placeholder="Full Name">
+                <input type="email" id="email" class="ios-input" placeholder="Email Address">
+                <input type="password" id="password" class="ios-input" placeholder="Password">
+                <input type="password" id="reg-confirm-password" class="auth-reg-field hidden ios-input" placeholder="Confirm Password">
                 
-                <div id="login-actions" class="auth-actions">
-                    <button id="login-btn" class="btn primary full-width">Sign In</button>
-                    <p class="toggle-text">New to LinkVault? <span id="go-to-register">Create an account</span></p>
+                <div id="login-actions" class="action-stack">
+                    <button id="login-btn" class="ios-btn action-primary">Sign In</button>
+                    <p class="switch-text">Don't have an account? <span id="go-to-register">Create one</span></p>
                 </div>
                 
-                <div id="register-actions" class="auth-actions hidden">
-                    <button id="register-btn" class="btn primary full-width">Create Account</button>
-                    <p class="toggle-text">Already have an account? <span id="go-to-login">Sign in</span></p>
+                <div id="register-actions" class="action-stack hidden">
+                    <button id="register-btn" class="ios-btn action-primary">Create Account</button>
+                    <p class="switch-text">Already have an account? <span id="go-to-login">Sign in</span></p>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="dashboard-screen" class="screen">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-mark small"></div>
-                <h3>LinkVault</h3>
-            </div>
-            
-            <div class="sidebar-section">
-                <h4>MY DIRECTORIES</h4>
-                <ul id="folder-list" class="folder-list"></ul>
-            </div>
-
-            <div class="new-folder-wrapper">
-                <input type="text" id="new-folder-name" class="input-field small" placeholder="New folder name">
-                <button id="create-folder-btn" class="btn outline small full-width">Create Folder</button>
-            </div>
-
-            <div class="sidebar-footer">
-                <div class="user-info" id="user-greeting">User</div>
-                <button id="logout-btn" class="btn text-btn small">Sign Out</button>
-            </div>
-        </aside>
-
-        <main class="main-content">
-            <header class="topbar">
-                <h2 id="current-folder-title">Select a Directory</h2>
-                
-                <div class="add-link-form" id="add-link-form" style="display: none;">
-                    <input type="text" id="link-title" class="input-field" placeholder="Link Title (e.g. Portfolio)">
-                    <input type="url" id="link-url" class="input-field" placeholder="https://...">
-                    <button id="save-link-btn" class="btn primary">Secure Link</button>
+        <div class="app-container">
+            <aside class="glass-sidebar">
+                <div class="sidebar-branding">
+                    <div class="mini-logo"></div>
+                    <h2>LinkVault</h2>
                 </div>
-            </header>
+                
+                <div class="sidebar-scroll-area">
+                    <span class="section-label">DIRECTORIES</span>
+                    <ul id="folder-list" class="ios-folder-list"></ul>
+                </div>
 
-            <div class="content-area">
-                <div class="file-grid" id="link-grid">
-                    <div class="empty-state">
-                        <p>Select a folder to view or add links.</p>
+                <div class="sidebar-controls">
+                    <input type="text" id="new-folder-name" class="ios-input compact" placeholder="New directory...">
+                    <button id="create-folder-btn" class="ios-btn action-secondary compact">Add Folder</button>
+                </div>
+
+                <div class="sidebar-profile">
+                    <div class="user-badge" id="user-greeting">Vault User</div>
+                    <button id="logout-btn" class="text-link-btn">Sign Out</button>
+                </div>
+            </aside>
+
+            <main class="main-panel">
+                <header class="glass-header">
+                    <div class="header-left">
+                        <h2 id="current-folder-title">Select a Directory</h2>
+                        <button id="share-folder-btn" class="ios-btn action-accent" style="display: none;">⚡ Share Directory</button>
+                    </div>
+                    
+                    <div class="glass-form" id="add-link-form" style="display: none;">
+                        <input type="text" id="link-title" class="ios-input" placeholder="Title">
+                        <input type="url" id="link-url" class="ios-input" placeholder="https://...">
+                        <button id="save-link-btn" class="ios-btn action-primary">Secure Link</button>
+                    </div>
+                </header>
+
+                <div class="workspace-area">
+                    <div class="ios-grid" id="link-grid">
+                        <div class="panel-empty-state">
+                            <p>Choose a folder from the sidebar or build a new directory route.</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
     <div id="share-modal" class="modal hidden">
-        <div class="modal-backdrop" id="modal-backdrop"></div>
-        <div class="modal-content card">
-            <div class="modal-header">
-                <h3>Create Share Gateway</h3>
-                <button id="close-modal-btn" class="icon-btn">✕</button>
+        <div class="modal-overlay" id="modal-backdrop"></div>
+        <div class="glass-card modal-sheet">
+            <div class="modal-sheet-header">
+                <h3>Share Configuration</h3>
+                <button id="close-modal-btn" class="close-pill">✕</button>
             </div>
             
-            <div class="modal-body">
-                <p class="target-link-name" id="share-link-name"></p>
+            <div class="modal-sheet-body">
+                <div class="directory-target-pill" id="share-link-name"></div>
                 
-                <div class="input-group">
-                    <label>Access PIN (Optional)</label>
-                    <input type="password" id="share-pin" class="input-field" placeholder="4-6 digit PIN">
-                    <small>Leave blank for open access.</small>
+                <div class="form-group">
+                    <label>Restrict Access with PIN (Optional)</label>
+                    <input type="password" id="share-pin" class="ios-input center-text" placeholder="4 to 6 digit numeric code">
+                    <small>Leave completely empty for public access paths.</small>
                 </div>
                 
-                <button id="generate-link-btn" class="btn primary full-width">Generate Secure Gateway</button>
+                <button id="generate-link-btn" class="ios-btn action-primary full">Compile Shared Gateway</button>
 
-                <div id="share-results" class="share-results hidden">
-                    <div class="link-display">
-                        <input type="text" id="shareable-link" class="input-field" readonly>
-                        <button id="copy-link-btn" class="btn outline">Copy</button>
+                <div id="share-results" class="share-output hidden">
+                    <div class="copy-matrix">
+                        <input type="text" id="shareable-link" class="ios-input" readonly>
+                        <button id="copy-link-btn" class="ios-btn action-secondary">Copy</button>
                     </div>
-                    <div class="qr-wrapper">
+                    <div class="qr-canvas-holder">
                         <div id="qrcode-container"></div>
                     </div>
                 </div>
