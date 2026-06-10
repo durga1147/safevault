@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 // Notice Storage is removed below
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
@@ -24,17 +24,100 @@ const authScreen = document.getElementById('auth-screen');
 const dashboardScreen = document.getElementById('dashboard-screen');
 
 // --- AUTHENTICATION ---
+// DOM Elements for Auth Toggle
+const authTitle = document.getElementById('auth-title');
+const regFields = document.querySelectorAll('.auth-reg-field');
+const loginActions = document.getElementById('login-actions');
+const registerActions = document.getElementById('register-actions');
+
+const goToRegister = document.getElementById('go-to-register');
+const goToLogin = document.getElementById('go-to-login');
+
+// --- TOGGLE BETWEEN LOGIN & REGISTER VISUALS ---
+goToRegister.addEventListener('click', () => {
+    authTitle.textContent = "Create New Account";
+    regFields.forEach(field => field.classList.remove('hidden'));
+    loginActions.classList.add('hidden');
+    registerActions.classList.remove('hidden');
+});
+
+goToLogin.addEventListener('click', () => {
+    authTitle.textContent = "Login to Secure Vault";
+    regFields.forEach(field => field.classList.add('hidden'));
+    loginActions.classList.remove('hidden');
+    registerActions.classList.add('hidden');
+});
+
+// --- MONITOR AUTH STATE ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
         authScreen.classList.remove('active');
         dashboardScreen.classList.add('active');
+        document.getElementById('current-folder-title').textContent = `Welcome, ${user.displayName || 'User'}`;
         loadFolders();
     } else {
         currentUser = null;
         authScreen.classList.add('active');
         dashboardScreen.classList.remove('active');
     }
+});
+
+// --- LOGIN LOGIC ---
+document.getElementById('login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) return alert("Please fill in all fields.");
+
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+        alert("Login failed: " + error.message);
+    }
+});
+
+// --- REGISTRATION LOGIC ---
+document.getElementById('register-btn').addEventListener('click', async () => {
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('reg-confirm-password').value;
+
+    // Validation checks
+    if (!name || !email || !password || !confirmPassword) {
+        alert("Please fill in all fields.");
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        alert("Passwords do not match!");
+        return;
+    }
+
+    if (password.length < 6) {
+        alert("Password must be at least 6 characters long.");
+        return;
+    }
+
+    try {
+        // Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Save the display name to their profile
+        await updateProfile(userCredential.user, {
+            displayName: name
+        });
+        
+        alert("Account created successfully!");
+    } catch (error) {
+        alert("Registration failed: " + error.message);
+    }
+});
+
+// --- LOGOUT LOGIC ---
+document.getElementById('logout-btn').addEventListener('click', () => {
+    signOut(auth);
 });
 
 document.getElementById('login-btn').addEventListener('click', async () => {
