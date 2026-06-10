@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Link Vault</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="screen active">
+        <div class="card">
+            <h2>Secure Link Vault</h2>
+            <input type="email" id="email" placeholder="Email Address">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-btn" class="btn primary">Login</button>
+            <button id="register-btn" class="btn secondary">Create Account</button>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="screen">
+        <aside class="sidebar">
+            <h3>My Folders</h3>
+            <ul id="folder-list"></ul>
+            <div class="new-folder">
+                <input type="text" id="new-folder-name" placeholder="Folder Name">
+                <button id="create-folder-btn" class="btn primary small">+ Add</button>
+            </div>
+            <button id="logout-btn" class="btn secondary small" style="margin-top: auto;">Logout</button>
+        </aside>
+
+        <main class="content">
+            <header>
+                <h2 id="current-folder-title">Select a Folder</h2>
+                <!-- UPDATED: Replaced file input with link inputs -->
+                <div class="upload-area" style="display: flex; gap: 10px;">
+                    <input type="text" id="link-title" placeholder="Link Title (e.g. My Portfolio)">
+                    <input type="url" id="link-url" placeholder="https://...">
+                    <button id="save-link-btn" class="btn primary">Save Link</button>
+                </div>
+            </header>
+            <div class="file-grid" id="link-grid">
+                <!-- Links will render here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="modal hidden">
+        <div class="modal-content card">
+            <h3>Share Link</h3>
+            <p id="share-link-name"></p>
+            
+            <div class="input-group">
+                <label>Set a PIN (Optional)</label>
+                <input type="password" id="share-pin" placeholder="Enter a 4-6 digit PIN">
+            </div>
+            
+            <button id="generate-link-btn" class="btn primary">Generate Gateway & QR</button>
+
+            <div id="share-results" class="hidden">
+                <input type="text" id="shareable-link" readonly>
+                <button id="copy-link-btn" class="btn secondary small">Copy</button>
+                <div id="qrcode-container"></div>
+                <p class="stats">Clicks tracked: <span id="click-count">0</span></p>
+            </div>
+            <button id="close-modal-btn" class="btn text-btn">Close</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Link Access</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="screen active" style="justify-content: center; align-items: center;">
+        <div class="card" id="unlock-card">
+            <h2>Secured Link</h2>
+            <div id="pin-section" class="hidden">
+                <p>This link is protected. Enter PIN to access.</p>
+                <input type="password" id="access-pin" placeholder="Enter PIN">
+            </div>
+            <button id="access-btn" class="btn primary">Unlock Link</button>
+        </div>
+
+        <div class="card hidden" id="destination-card">
+            <h2 id="display-link-title"></h2>
+            <a id="visit-link" href="#" target="_blank" class="btn primary">Visit Link</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            // PASTE YOUR CONFIG HERE
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkId = urlParams.get('id');
+
+        async function verifyAndLoad() {
+            if (!linkId) return alert("Invalid Gateway Link");
+            
+            const docRef = doc(db, "shared_gateways", linkId);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) return alert("Link expired or deleted");
+
+            const data = docSnap.data();
+            const pinInput = document.getElementById('access-pin').value;
+
+            if (data.pin && data.pin !== pinInput) {
+                document.getElementById('pin-section').classList.remove('hidden');
+                if(pinInput) alert("Incorrect PIN");
+                return;
+            }
+
+            // Correct PIN: Update Analytics and show link
+            await updateDoc(docRef, { clicks: increment(1) });
+
+            document.getElementById('unlock-card').classList.add('hidden');
+            document.getElementById('destination-card').classList.remove('hidden');
+            document.getElementById('display-link-title').textContent = data.linkTitle;
+            document.getElementById('visit-link').href = data.targetUrl;
+        }
+
+        document.getElementById('access-btn').addEventListener('click', verifyAndLoad);
+        verifyAndLoad();
+    </script>
+</body>
+</html>
