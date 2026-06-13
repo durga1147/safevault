@@ -41,7 +41,6 @@
     </div>
 
     <div id="dashboard-screen" class="screen layout-dashboard">
-        
         <aside class="sidebar ui-card">
             <div class="sidebar-branding">
                 <span class="icon-3d">🛡️</span>
@@ -72,7 +71,7 @@
                 <div class="header-left">
                     <h2 id="current-folder-title">Select a Directory</h2>
                     <button id="share-folder-btn" class="btn-3d accent small" style="display: none;">
-                        <span class="icon-3d">⚡</span> Share Directory
+                        <span class="icon-3d">🔗</span> Create Sharable Link
                     </button>
                 </div>
                 
@@ -98,31 +97,77 @@
         <div class="modal-overlay" id="modal-backdrop"></div>
         <div class="modal-sheet ui-card">
             <div class="modal-sheet-header">
-                <h3>Share Configuration</h3>
+                <h3>Gateway Manager</h3>
                 <button id="close-modal-btn" class="close-pill">✕</button>
             </div>
             
-            <div class="modal-sheet-body">
-                <div class="directory-target-pill" id="share-link-name"></div>
-                
-                <div class="form-group">
-                    <label>Restrict Access with PIN (Optional)</label>
-                    <div class="pin-input-wrapper">
-                        <span class="icon-3d">🔒</span>
-                        <input type="password" id="share-pin" class="ui-input center-text" placeholder="4 to 6 digit code">
-                    </div>
-                    <small>Leave completely empty for public access paths.</small>
-                </div>
-                
-                <button id="generate-link-btn" class="btn-3d primary full">Compile Shared Gateway</button>
+            <div class="modal-tabs">
+                <button class="tab-btn active" id="tab-create-btn">Create New Link</button>
+                <button class="tab-btn" id="tab-manage-btn">All Created Links</button>
+            </div>
 
-                <div id="share-results" class="share-output hidden">
-                    <div class="copy-matrix">
-                        <input type="text" id="shareable-link" class="ui-input" readonly>
-                        <button id="copy-link-btn" class="btn-3d secondary">Copy</button>
+            <div class="modal-sheet-body">
+                <div id="tab-create-view" class="tab-content">
+                    <div class="directory-target-pill" id="share-link-name"></div>
+                    
+                    <div class="form-group">
+                        <label>Restrict Access with PIN (Optional)</label>
+                        <div class="pin-input-wrapper">
+                            <span class="icon-3d">🔒</span>
+                            <input type="password" id="share-pin" class="ui-input center-text" placeholder="4 to 6 digit code">
+                        </div>
+                        <small>Leave completely empty for public access paths.</small>
                     </div>
-                    <div class="qr-canvas-holder">
-                        <div id="qrcode-container"></div>
+                    
+                    <button id="generate-link-btn" class="btn-3d primary full">Compile Shared Gateway</button>
+
+                    <div id="share-results" class="share-output hidden">
+                        <div class="copy-matrix">
+                            <input type="text" id="shareable-link" class="ui-input" readonly>
+                            <button id="copy-link-btn" class="btn-3d secondary">Copy</button>
+                        </div>
+                        <div class="qr-canvas-holder">
+                            <div id="qrcode-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-manage-view" class="tab-content hidden">
+                    <div class="manager-header">
+                        <span style="font-weight: 700; color: var(--text-main);">Active Gateways</span>
+                        <button id="toggle-select-btn" class="text-link-btn">Select</button>
+                    </div>
+                    
+                    <div class="manager-list-area">
+                        <ul id="gateway-list" class="folder-list"></ul>
+                        <p id="no-gateways-msg" class="hidden" style="text-align: center; color: var(--text-muted); padding: 1rem 0;">No active links for this directory.</p>
+                    </div>
+
+                    <div id="bulk-action-bar" class="hidden" style="margin-top: 1rem;">
+                        <button id="bulk-delete-btn" class="btn-3d full" style="background: #DC2626; color: white;">Delete Selected</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="modal hidden" style="z-index: 2500;">
+        <div class="modal-overlay" id="stats-modal-backdrop" style="background: rgba(0,0,0,0.6);"></div>
+        <div class="modal-sheet ui-card" style="max-width: 350px;">
+            <div class="modal-sheet-header">
+                <h3>Gateway Statistics</h3>
+                <button id="close-stats-btn" class="close-pill">✕</button>
+            </div>
+            <div class="modal-sheet-body" style="text-align: center; gap: 2rem;">
+                <span class="icon-3d large-icon">📊</span>
+                <div style="display: flex; justify-content: space-around;">
+                    <div>
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--primary);" id="stat-clicks">0</div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Clicks</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--accent);" id="stat-unlocks">0</div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Unlocks</div>
                     </div>
                 </div>
             </div>
@@ -130,15 +175,15 @@
     </div>
 
     <div id="folder-context-menu" class="context-menu ui-card hidden">
-        <button class="context-menu-item" id="menu-edit">
-            <span class="icon-3d">✏️</span> Rename
-        </button>
-        <button class="context-menu-item" id="menu-duplicate">
-            <span class="icon-3d">📋</span> Duplicate
-        </button>
-        <button class="context-menu-item danger" id="menu-delete">
-            <span class="icon-3d">🗑️</span> Delete
-        </button>
+        <button class="context-menu-item" id="menu-edit"><span class="icon-3d">✏️</span> Rename</button>
+        <button class="context-menu-item" id="menu-duplicate"><span class="icon-3d">📋</span> Duplicate</button>
+        <button class="context-menu-item danger" id="menu-delete"><span class="icon-3d">🗑️</span> Delete</button>
+    </div>
+
+    <div id="gateway-context-menu" class="context-menu ui-card hidden" style="z-index: 2000;">
+        <button class="context-menu-item" id="gateway-menu-copy"><span class="icon-3d">🔗</span> Copy Link</button>
+        <button class="context-menu-item" id="gateway-menu-stats"><span class="icon-3d">📈</span> Show Stats</button>
+        <button class="context-menu-item danger" id="gateway-menu-delete"><span class="icon-3d">🗑️</span> Delete</button>
     </div>
 
     <script type="module" src="app.js"></script>
