@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
@@ -90,17 +90,32 @@ async function loadFolders() {
     const list = document.getElementById('folder-list');
     list.innerHTML = '';
     
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((docSnap) => {
+        const folderData = docSnap.data();
         const li = document.createElement('li');
-        // UI Update: Added 3D Folder Icon
-        li.innerHTML = `<span class="icon-3d">📁</span> <span>${doc.data().name}</span>`;
         
+        li.innerHTML = `
+            <div class="folder-name-container">
+                <span class="icon-3d">📁</span> 
+                <span class="folder-text">${folderData.name}</span>
+            </div>
+            <button class="folder-action-btn">⋮</button>
+        `;
+        
+        // Handle 3-Dot Menu Click
+        const actionBtn = li.querySelector('.folder-action-btn');
+        actionBtn.onclick = (e) => {
+            e.stopPropagation(); 
+            openContextMenu(e, docSnap.id, folderData.name);
+        };
+
+        // Handle Folder Selection
         li.onclick = () => {
             document.querySelectorAll('.folder-list li').forEach(el => el.classList.remove('active'));
             li.classList.add('active');
             
-            currentFolderId = doc.id;
-            currentFolderName = doc.data().name;
+            currentFolderId = docSnap.id;
+            currentFolderName = folderData.name;
             
             document.getElementById('current-folder-title').textContent = currentFolderName;
             document.getElementById('add-link-form').style.display = 'flex'; 
@@ -118,6 +133,112 @@ document.getElementById('create-folder-btn').addEventListener('click', async () 
     
     await addDoc(collection(db, "folders"), { name: nameInput.value.trim(), userId: currentUser.uid });
     nameInput.value = '';
+    loadFolders();
+});
+
+
+// --- CONTEXT MENU SYSTEM (EDIT, DUPLICATE, DELETE) ---
+const contextMenu = document.getElementById('folder-context-menu');
+let menuTargetId = null;
+let menuTargetName = null;
+
+function openContextMenu(e, folderId, folderName) {
+    menuTargetId = folderId;
+    menuTargetName = folderName;
+    contextMenu.classList.remove('hidden');
+    
+    const rect = e.target.getBoundingClientRect();
+    contextMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    contextMenu.style.left = `${rect.left + window.scrollX - 120}px`; 
+}
+
+// Close menu when clicking away
+document.addEventListener('click', (e) => {
+    if (!contextMenu.contains(e.target) && !e.target.classList.contains('folder-action-btn')) {
+        contextMenu.classList.add('hidden');
+    }
+});
+
+// ACTION: Edit Directory
+document.getElementById('menu-edit').addEventListener('click', async () => {
+    contextMenu.classList.add('hidden');
+    const newName = prompt("Rename directory:", menuTargetName);
+    
+    if (newName && newName.trim() !== "" && newName !== menuTargetName) {
+        await updateDoc(doc(db, "folders", menuTargetId), { name: newName.trim() });
+        
+        if (currentFolderId === menuTargetId) {
+            currentFolderName = newName.trim();
+            document.getElementById('current-folder-title').textContent = currentFolderName;
+        }
+        loadFolders();
+    }
+});
+
+// ACTION: Delete Directory
+document.getElementById('menu-delete').addEventListener('click', async () => {
+    contextMenu.classList.add('hidden');
+    if (confirm(`Warning: Are you sure you want to delete "${menuTargetName}"? All secure links inside will be permanently lost.`)) {
+        
+        const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetId));
+        const linksSnap = await getDocs(linksQ);
+        linksSnap.forEach(async (linkDoc) => {
+            await deleteDoc(doc(db, "saved_links", linkDoc.id));
+        });
+
+        await deleteDoc(doc(db, "folders", menuTargetId));
+        
+        if (currentFolderId === menuTargetId) {
+            currentFolderId = null;
+            currentFolderName = "";
+            document.getElementById('current-folder-title').textContent = "Select a Directory";
+            document.getElementById('add-link-form').style.display = 'none';
+            document.getElementById('share-folder-btn').style.display = 'none';
+            document.getElementById('link-grid').innerHTML = '<div class="panel-empty-state ui-card"><span class="icon-3d large-icon">🧭</span><p>Choose a folder from the sidebar.</p></div>';
+        }
+        loadFolders();
+    }
+});
+
+// ACTION: Duplicate Directory
+document.getElementById('menu-duplicate').addEventListener('click', async () => {
+    contextMenu.classList.add('hidden');
+    
+    const baseName = menuTargetName.replace(/ \(\d+\)$/, '');
+    const foldersQ = query(collection(db, "folders"), where("userId", "==", currentUser.uid));
+    const foldersSnap = await getDocs(foldersQ);
+    let maxNum = 0;
+    
+    const pattern = new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?: \\((\\d+)\\))?$`);
+    
+    foldersSnap.forEach(fDoc => {
+        const match = fDoc.data().name.match(pattern);
+        if (match) {
+            const num = match[1] ? parseInt(match[1]) : 0;
+            maxNum = Math.max(maxNum, num);
+        }
+    });
+    
+    const newFolderName = `${baseName} (${maxNum + 1})`;
+
+    const newFolderRef = await addDoc(collection(db, "folders"), { 
+        name: newFolderName, 
+        userId: currentUser.uid 
+    });
+
+    const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetId));
+    const linksSnap = await getDocs(linksQ);
+    
+    for (const linkDoc of linksSnap.docs) {
+        const linkData = linkDoc.data();
+        await addDoc(collection(db, "saved_links"), {
+            folderId: newFolderRef.id,
+            title: linkData.title,
+            url: linkData.url,
+            createdAt: serverTimestamp()
+        });
+    }
+
     loadFolders();
 });
 
@@ -164,7 +285,6 @@ async function loadLinks(folderId) {
         const data = doc.data();
         const card = document.createElement('div');
         card.className = 'link-card ui-card';
-        // UI Update: Card structure matches tactile design requirements
         card.innerHTML = `
             <div class="link-card-header">
                 <span class="icon-3d">🔗</span>
