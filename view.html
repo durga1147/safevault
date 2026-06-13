@@ -33,8 +33,7 @@
             </div>
         </div>
 
-        <div class="gateway-shell hidden" id="destination-container">
-            </div>
+        <div class="gateway-shell hidden" id="destination-container"></div>
     </div>
 
     <script type="module">
@@ -42,19 +41,22 @@
         import { getFirestore, doc, getDoc, updateDoc, increment, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         
         const firebaseConfig = {
-              apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
-              authDomain: "vault-98419.firebaseapp.com",
-              projectId: "vault-98419",
-              storageBucket: "vault-98419.firebasestorage.app",
-              messagingSenderId: "403052820420",
-              appId: "1:403052820420:web:a01d8e9bd29be6b4595691"
-            };
+          apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
+          authDomain: "vault-98419.firebaseapp.com",
+          projectId: "vault-98419",
+          storageBucket: "vault-98419.firebasestorage.app",
+          messagingSenderId: "403052820420",
+          appId: "1:403052820420:web:a01d8e9bd29be6b4595691"
+        };
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         const urlParams = new URLSearchParams(window.location.search);
         const linkId = urlParams.get('id');
+
+        // Track if we've already counted a visit for this session
+        let visitTracked = false;
 
         async function verifyAndLoad() {
             try {
@@ -66,6 +68,11 @@
                 if (!docSnap.exists()) {
                     document.querySelector('.centered-card').innerHTML = `<span class="icon-3d large-icon">⚠️</span><h3>Gateway Expired</h3><p style="color: var(--text-muted);">This link is no longer active.</p>`;
                     return;
+                }
+
+                // 1. Initial Load - Track Visit exactly once
+                if (!visitTracked) {
+                    try { await updateDoc(docRef, { visits: increment(1) }); visitTracked = true; } catch (e) { }
                 }
 
                 const data = docSnap.data();
@@ -83,8 +90,8 @@
                     return;
                 }
 
-                try { await updateDoc(docRef, { clicks: increment(1) }); } 
-                catch (e) { console.warn("Analytics write dropped.", e); }
+                // 2. Successful PIN or Public Link - Track Unlock
+                try { await updateDoc(docRef, { unlocks: increment(1) }); } catch (e) { }
 
                 document.getElementById('unlock-container').classList.add('hidden');
                 const destContainer = document.getElementById('destination-container');
