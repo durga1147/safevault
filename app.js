@@ -19,7 +19,7 @@ let currentUser = null;
 let currentFolderId = null;
 let currentFolderName = "";
 
-// DOM Elements
+// Auth Logic
 const authScreen = document.getElementById('auth-screen');
 const dashboardScreen = document.getElementById('dashboard-screen');
 const authTitle = document.getElementById('auth-title');
@@ -27,7 +27,6 @@ const regFields = document.querySelectorAll('.auth-reg-field');
 const loginActions = document.getElementById('login-actions');
 const registerActions = document.getElementById('register-actions');
 
-// --- AUTHENTICATION INTERACTIVE TOGGLE ---
 document.getElementById('go-to-register').addEventListener('click', () => {
     authTitle.textContent = "Create Account";
     regFields.forEach(field => field.classList.remove('hidden'));
@@ -42,7 +41,6 @@ document.getElementById('go-to-login').addEventListener('click', () => {
     registerActions.classList.add('hidden');
 });
 
-// --- AUTHENTICATION OBSERVER NODE ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
@@ -57,11 +55,10 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- TRANSACTION HANDLERS: AUTHENTICATION ---
 document.getElementById('login-btn').addEventListener('click', async () => {
     const e = document.getElementById('email').value.trim();
     const p = document.getElementById('password').value;
-    if (!e || !p) return alert("All authorization vectors required.");
+    if (!e || !p) return alert("All fields required.");
     try { await signInWithEmailAndPassword(auth, e, p); } 
     catch (error) { alert("Auth Failure: " + error.message); }
 });
@@ -73,7 +70,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     const cp = document.getElementById('reg-confirm-password').value;
 
     if (!name || !e || !p || !cp) return alert("All credentials fields mandatory.");
-    if (p !== cp) return alert("Password mismatch confirmed.");
+    if (p !== cp) return alert("Password mismatch.");
     
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, e, p);
@@ -83,7 +80,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 
 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-// --- IO SYSTEM: DIRECTORIES (FOLDERS) ---
+// --- DIRECTORIES ---
 async function loadFolders() {
     const q = query(collection(db, "folders"), where("userId", "==", currentUser.uid));
     const querySnapshot = await getDocs(q);
@@ -102,14 +99,12 @@ async function loadFolders() {
             <button class="folder-action-btn">⋮</button>
         `;
         
-        // Handle 3-Dot Menu Click
         const actionBtn = li.querySelector('.folder-action-btn');
         actionBtn.onclick = (e) => {
             e.stopPropagation(); 
-            openContextMenu(e, docSnap.id, folderData.name);
+            openFolderContextMenu(e, docSnap.id, folderData.name);
         };
 
-        // Handle Folder Selection
         li.onclick = () => {
             document.querySelectorAll('.folder-list li').forEach(el => el.classList.remove('active'));
             li.classList.add('active');
@@ -130,44 +125,33 @@ async function loadFolders() {
 document.getElementById('create-folder-btn').addEventListener('click', async () => {
     const nameInput = document.getElementById('new-folder-name');
     if(!nameInput.value.trim()) return;
-    
     await addDoc(collection(db, "folders"), { name: nameInput.value.trim(), userId: currentUser.uid });
     nameInput.value = '';
     loadFolders();
 });
 
+// --- FOLDER CONTEXT MENU ---
+const folderContextMenu = document.getElementById('folder-context-menu');
+let menuTargetFolderId = null;
+let menuTargetFolderName = null;
 
-// --- CONTEXT MENU SYSTEM (EDIT, DUPLICATE, DELETE) ---
-const contextMenu = document.getElementById('folder-context-menu');
-let menuTargetId = null;
-let menuTargetName = null;
-
-function openContextMenu(e, folderId, folderName) {
-    menuTargetId = folderId;
-    menuTargetName = folderName;
-    contextMenu.classList.remove('hidden');
+function openFolderContextMenu(e, folderId, folderName) {
+    menuTargetFolderId = folderId;
+    menuTargetFolderName = folderName;
+    folderContextMenu.classList.remove('hidden');
+    gatewayContextMenu.classList.add('hidden');
     
     const rect = e.target.getBoundingClientRect();
-    contextMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
-    contextMenu.style.left = `${rect.left + window.scrollX - 120}px`; 
+    folderContextMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    folderContextMenu.style.left = `${rect.left + window.scrollX - 120}px`; 
 }
 
-// Close menu when clicking away
-document.addEventListener('click', (e) => {
-    if (!contextMenu.contains(e.target) && !e.target.classList.contains('folder-action-btn')) {
-        contextMenu.classList.add('hidden');
-    }
-});
-
-// ACTION: Edit Directory
 document.getElementById('menu-edit').addEventListener('click', async () => {
-    contextMenu.classList.add('hidden');
-    const newName = prompt("Rename directory:", menuTargetName);
-    
-    if (newName && newName.trim() !== "" && newName !== menuTargetName) {
-        await updateDoc(doc(db, "folders", menuTargetId), { name: newName.trim() });
-        
-        if (currentFolderId === menuTargetId) {
+    folderContextMenu.classList.add('hidden');
+    const newName = prompt("Rename directory:", menuTargetFolderName);
+    if (newName && newName.trim() !== "" && newName !== menuTargetFolderName) {
+        await updateDoc(doc(db, "folders", menuTargetFolderId), { name: newName.trim() });
+        if (currentFolderId === menuTargetFolderId) {
             currentFolderName = newName.trim();
             document.getElementById('current-folder-title').textContent = currentFolderName;
         }
@@ -175,20 +159,16 @@ document.getElementById('menu-edit').addEventListener('click', async () => {
     }
 });
 
-// ACTION: Delete Directory
 document.getElementById('menu-delete').addEventListener('click', async () => {
-    contextMenu.classList.add('hidden');
-    if (confirm(`Warning: Are you sure you want to delete "${menuTargetName}"? All secure links inside will be permanently lost.`)) {
-        
-        const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetId));
+    folderContextMenu.classList.add('hidden');
+    if (confirm(`Delete "${menuTargetFolderName}" and all contents?`)) {
+        const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetFolderId));
         const linksSnap = await getDocs(linksQ);
-        linksSnap.forEach(async (linkDoc) => {
-            await deleteDoc(doc(db, "saved_links", linkDoc.id));
-        });
+        linksSnap.forEach(async (linkDoc) => await deleteDoc(doc(db, "saved_links", linkDoc.id)));
 
-        await deleteDoc(doc(db, "folders", menuTargetId));
+        await deleteDoc(doc(db, "folders", menuTargetFolderId));
         
-        if (currentFolderId === menuTargetId) {
+        if (currentFolderId === menuTargetFolderId) {
             currentFolderId = null;
             currentFolderName = "";
             document.getElementById('current-folder-title').textContent = "Select a Directory";
@@ -200,65 +180,40 @@ document.getElementById('menu-delete').addEventListener('click', async () => {
     }
 });
 
-// ACTION: Duplicate Directory
 document.getElementById('menu-duplicate').addEventListener('click', async () => {
-    contextMenu.classList.add('hidden');
-    
-    const baseName = menuTargetName.replace(/ \(\d+\)$/, '');
+    folderContextMenu.classList.add('hidden');
+    const baseName = menuTargetFolderName.replace(/ \(\d+\)$/, '');
     const foldersQ = query(collection(db, "folders"), where("userId", "==", currentUser.uid));
     const foldersSnap = await getDocs(foldersQ);
     let maxNum = 0;
-    
     const pattern = new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?: \\((\\d+)\\))?$`);
     
     foldersSnap.forEach(fDoc => {
         const match = fDoc.data().name.match(pattern);
-        if (match) {
-            const num = match[1] ? parseInt(match[1]) : 0;
-            maxNum = Math.max(maxNum, num);
-        }
+        if (match) maxNum = Math.max(maxNum, match[1] ? parseInt(match[1]) : 0);
     });
     
-    const newFolderName = `${baseName} (${maxNum + 1})`;
-
-    const newFolderRef = await addDoc(collection(db, "folders"), { 
-        name: newFolderName, 
-        userId: currentUser.uid 
-    });
-
-    const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetId));
+    const newFolderRef = await addDoc(collection(db, "folders"), { name: `${baseName} (${maxNum + 1})`, userId: currentUser.uid });
+    const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetFolderId));
     const linksSnap = await getDocs(linksQ);
     
     for (const linkDoc of linksSnap.docs) {
         const linkData = linkDoc.data();
-        await addDoc(collection(db, "saved_links"), {
-            folderId: newFolderRef.id,
-            title: linkData.title,
-            url: linkData.url,
-            createdAt: serverTimestamp()
-        });
+        await addDoc(collection(db, "saved_links"), { folderId: newFolderRef.id, title: linkData.title, url: linkData.url, createdAt: serverTimestamp() });
     }
-
     loadFolders();
 });
 
-// --- IO SYSTEM: RECORD MANIFESTS (LINKS) ---
+
+// --- LINKS ---
 document.getElementById('save-link-btn').addEventListener('click', async () => {
-    if (!currentFolderId) return alert("Target reference directory missing.");
-    
+    if (!currentFolderId) return;
     const title = document.getElementById('link-title').value.trim();
     let url = document.getElementById('link-url').value.trim();
-    
-    if (!title || !url) return alert("Please provide both a title and URL.");
+    if (!title || !url) return alert("Title and URL required.");
     if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
 
-    await addDoc(collection(db, "saved_links"), {
-        folderId: currentFolderId,
-        title: title,
-        url: url,
-        createdAt: serverTimestamp()
-    });
-    
+    await addDoc(collection(db, "saved_links"), { folderId: currentFolderId, title: title, url: url, createdAt: serverTimestamp() });
     document.getElementById('link-title').value = '';
     document.getElementById('link-url').value = '';
     loadLinks(currentFolderId); 
@@ -266,17 +221,11 @@ document.getElementById('save-link-btn').addEventListener('click', async () => {
 
 async function loadLinks(folderId) {
     const linkGrid = document.getElementById('link-grid');
-    linkGrid.innerHTML = '<div class="panel-empty-state ui-card"><p>Accessing secure vectors...</p></div>';
-
     const q = query(collection(db, "saved_links"), where("folderId", "==", folderId));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-        linkGrid.innerHTML = `
-            <div class="panel-empty-state ui-card">
-                <span class="icon-3d large-icon">📂</span>
-                <p>No routes preserved in this directory.</p>
-            </div>`;
+        linkGrid.innerHTML = `<div class="panel-empty-state ui-card"><span class="icon-3d large-icon">📂</span><p>No routes preserved in this directory.</p></div>`;
         return;
     }
 
@@ -286,35 +235,55 @@ async function loadLinks(folderId) {
         const card = document.createElement('div');
         card.className = 'link-card ui-card';
         card.innerHTML = `
-            <div class="link-card-header">
-                <span class="icon-3d">🔗</span>
-                <h4>${data.title}</h4>
-            </div>
+            <div class="link-card-header"><span class="icon-3d">🔗</span><h4>${data.title}</h4></div>
             <a href="${data.url}" target="_blank" class="destination-url">${data.url}</a>
         `;
         linkGrid.appendChild(card);
     });
 }
 
-// --- SECURE COMPILING SYSTEM: GATEWAYS ---
+// --- TAB MODAL & GATEWAY MANAGER SYSTEM ---
+const tabCreateBtn = document.getElementById('tab-create-btn');
+const tabManageBtn = document.getElementById('tab-manage-btn');
+const tabCreateView = document.getElementById('tab-create-view');
+const tabManageView = document.getElementById('tab-manage-view');
+
+tabCreateBtn.addEventListener('click', () => {
+    tabCreateBtn.classList.add('active'); tabManageBtn.classList.remove('active');
+    tabCreateView.classList.remove('hidden'); tabManageView.classList.add('hidden');
+});
+tabManageBtn.addEventListener('click', () => {
+    tabManageBtn.classList.add('active'); tabCreateBtn.classList.remove('active');
+    tabManageView.classList.remove('hidden'); tabCreateView.classList.add('hidden');
+    loadGateways(); // Refresh list when tab opens
+});
+
+// OPEN MODAL
 document.getElementById('share-folder-btn').addEventListener('click', () => {
     if (!currentFolderId) return;
     document.getElementById('share-link-name').innerHTML = `<span class="icon-3d">📁</span> Directory: ${currentFolderName}`;
     document.getElementById('share-pin').value = '';
     document.getElementById('share-results').classList.add('hidden');
     document.getElementById('share-modal').classList.remove('hidden');
+    
+    // Reset to create tab
+    tabCreateBtn.click();
 });
 
+// GENERATE NEW GATEWAY
 document.getElementById('generate-link-btn').addEventListener('click', async () => {
     if(!currentFolderId) return;
     const pin = document.getElementById('share-pin').value;
     
+    // Track visits & unlocks separately
     const shareDoc = await addDoc(collection(db, "shared_gateways"), {
         folderId: currentFolderId,
         folderName: currentFolderName,
         pin: pin || null,
-        clicks: 0,
-        createdBy: currentUser.uid
+        visits: 0,
+        unlocks: 0,
+        createdBy: currentUser.uid,
+        createdAt: serverTimestamp()
     });
 
     const currentUrl = window.location.href;
@@ -327,11 +296,7 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
 
     document.getElementById('qrcode-container').innerHTML = "";
     new QRCode(document.getElementById('qrcode-container'), {
-        text: shareUrl,
-        width: 140,
-        height: 140,
-        colorDark : "#111827",
-        colorLight : "#ffffff",
+        text: shareUrl, width: 140, height: 140, colorDark : "#111827", colorLight : "#ffffff"
     });
     
     document.getElementById('copy-link-btn').onclick = () => {
@@ -340,6 +305,163 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
     };
 });
 
-const closeModal = () => document.getElementById('share-modal').classList.add('hidden');
-document.getElementById('close-modal-btn').addEventListener('click', closeModal);
-document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+// --- GATEWAY MANAGER LOGIC ---
+let isSelecting = false;
+let allSelected = false;
+
+document.getElementById('toggle-select-btn').addEventListener('click', (e) => {
+    const btn = e.target;
+    const actionBar = document.getElementById('bulk-action-bar');
+    
+    if (!isSelecting) {
+        // Turn ON selection mode
+        isSelecting = true;
+        allSelected = false;
+        btn.textContent = "Select All";
+        document.querySelectorAll('.gateway-checkbox').forEach(cb => { cb.parentElement.classList.remove('hidden'); cb.checked = false; });
+        actionBar.classList.remove('hidden');
+    } else {
+        if (allSelected) {
+            // Turn OFF selection mode
+            isSelecting = false;
+            allSelected = false;
+            btn.textContent = "Select";
+            document.querySelectorAll('.gateway-checkbox').forEach(cb => cb.parentElement.classList.add('hidden'));
+            actionBar.classList.add('hidden');
+        } else {
+            // Select ALL
+            allSelected = true;
+            btn.textContent = "Cancel";
+            document.querySelectorAll('.gateway-checkbox').forEach(cb => cb.checked = true);
+        }
+    }
+});
+
+async function loadGateways() {
+    isSelecting = false;
+    allSelected = false;
+    document.getElementById('toggle-select-btn').textContent = "Select";
+    document.getElementById('bulk-action-bar').classList.add('hidden');
+
+    const list = document.getElementById('gateway-list');
+    const noMsg = document.getElementById('no-gateways-msg');
+    list.innerHTML = '';
+    
+    const q = query(collection(db, "shared_gateways"), where("folderId", "==", currentFolderId));
+    const snap = await getDocs(q);
+    
+    if(snap.empty) {
+        noMsg.classList.remove('hidden');
+        document.getElementById('toggle-select-btn').style.display = 'none';
+        return;
+    }
+    
+    noMsg.classList.add('hidden');
+    document.getElementById('toggle-select-btn').style.display = 'block';
+
+    snap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const li = document.createElement('li');
+        
+        const currentUrl = window.location.href;
+        const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+        const fullUrl = `${baseUrl}view.html?id=${docSnap.id}`;
+        
+        li.innerHTML = `
+            <div class="checkbox-ui hidden">
+                <input type="checkbox" class="gateway-checkbox" value="${docSnap.id}">
+            </div>
+            <div class="folder-name-container">
+                <span class="icon-3d">🌐</span> 
+                <div style="display:flex; flex-direction:column;">
+                    <span class="folder-text" style="font-size: 0.9rem;">Gateway (PIN: ${data.pin ? 'Yes' : 'No'})</span>
+                    <span style="font-size: 0.75rem; color: var(--primary);">${fullUrl.substring(0, 30)}...</span>
+                </div>
+            </div>
+            <button class="folder-action-btn gw-action-btn">⋮</button>
+        `;
+        
+        // Allow clicking the LI to toggle checkbox
+        li.addEventListener('click', (e) => {
+            if(isSelecting && !e.target.classList.contains('gw-action-btn')) {
+                const cb = li.querySelector('.gateway-checkbox');
+                cb.checked = !cb.checked;
+            }
+        });
+
+        // 3-dot context menu
+        const btn = li.querySelector('.gw-action-btn');
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openGatewayMenu(e, docSnap.id, fullUrl, data.visits || 0, data.unlocks || 0);
+        });
+
+        list.appendChild(li);
+    });
+}
+
+// Bulk Delete
+document.getElementById('bulk-delete-btn').addEventListener('click', async () => {
+    const checked = document.querySelectorAll('.gateway-checkbox:checked');
+    if (checked.length === 0) return alert("Select at least one link to delete.");
+    
+    if (confirm(`Delete ${checked.length} selected link(s)?`)) {
+        for (let cb of checked) {
+            await deleteDoc(doc(db, "shared_gateways", cb.value));
+        }
+        loadGateways();
+    }
+});
+
+// --- GATEWAY CONTEXT MENU ---
+const gatewayContextMenu = document.getElementById('gateway-context-menu');
+const statsModal = document.getElementById('stats-modal');
+let gwTargetId = null;
+let gwTargetUrl = null;
+let gwTargetVisits = 0;
+let gwTargetUnlocks = 0;
+
+function openGatewayMenu(e, id, url, visits, unlocks) {
+    gwTargetId = id; gwTargetUrl = url; gwTargetVisits = visits; gwTargetUnlocks = unlocks;
+    folderContextMenu.classList.add('hidden');
+    gatewayContextMenu.classList.remove('hidden');
+    
+    const rect = e.target.getBoundingClientRect();
+    gatewayContextMenu.style.top = `${rect.bottom + 5}px`; // Relative to modal window
+    gatewayContextMenu.style.left = `${rect.left - 130}px`; 
+}
+
+document.addEventListener('click', (e) => {
+    if (!folderContextMenu.contains(e.target) && !e.target.classList.contains('folder-action-btn')) folderContextMenu.classList.add('hidden');
+    if (!gatewayContextMenu.contains(e.target) && !e.target.classList.contains('gw-action-btn')) gatewayContextMenu.classList.add('hidden');
+});
+
+document.getElementById('gateway-menu-copy').addEventListener('click', () => {
+    gatewayContextMenu.classList.add('hidden');
+    navigator.clipboard.writeText(gwTargetUrl);
+    alert("Copied to clipboard!");
+});
+
+document.getElementById('gateway-menu-delete').addEventListener('click', async () => {
+    gatewayContextMenu.classList.add('hidden');
+    if (confirm("Delete this specific shared link?")) {
+        await deleteDoc(doc(db, "shared_gateways", gwTargetId));
+        loadGateways();
+    }
+});
+
+document.getElementById('gateway-menu-stats').addEventListener('click', () => {
+    gatewayContextMenu.classList.add('hidden');
+    document.getElementById('stat-clicks').textContent = gwTargetVisits;
+    document.getElementById('stat-unlocks').textContent = gwTargetUnlocks;
+    statsModal.classList.remove('hidden');
+});
+
+// Close Modals
+const closeShareModal = () => document.getElementById('share-modal').classList.add('hidden');
+document.getElementById('close-modal-btn').addEventListener('click', closeShareModal);
+document.getElementById('modal-backdrop').addEventListener('click', closeShareModal);
+
+const closeStatsModal = () => statsModal.classList.add('hidden');
+document.getElementById('close-stats-btn').addEventListener('click', closeStatsModal);
+document.getElementById('stats-modal-backdrop').addEventListener('click', closeStatsModal);
