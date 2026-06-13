@@ -109,10 +109,41 @@ body { background: var(--bg-canvas); color: var(--text-main); height: 100vh; ove
 .section-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.75rem; display: block; }
 .sidebar-scroll-area { flex-grow: 1; overflow-y: auto; }
 
+/* Folder List & 3-Dot Menu Updates */
 .folder-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
-.folder-list li { padding: 0.75rem; cursor: pointer; border-radius: var(--radius-input); font-weight: 600; display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted); transition: all 0.2s; border: 2px solid transparent; }
+.folder-list li { 
+    display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; 
+    padding: 0.5rem 0.5rem 0.5rem 0.75rem; cursor: pointer; border-radius: var(--radius-input); 
+    font-weight: 600; color: var(--text-muted); transition: all 0.2s; border: 2px solid transparent; 
+}
 .folder-list li:hover { background: var(--border-light); color: var(--text-main); }
 .folder-list li.active { background: #EEF2FF; color: var(--primary); border-color: #C7D2FE; }
+
+.folder-name-container { display: flex; align-items: center; gap: 0.75rem; flex-grow: 1; overflow: hidden; }
+.folder-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
+.folder-action-btn { 
+    background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); 
+    width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+    transition: all 0.2s; font-weight: bold;
+}
+.folder-action-btn:hover { background: var(--secondary); color: var(--text-main); }
+.folder-list li.active .folder-action-btn:hover { background: #C7D2FE; color: var(--primary-dark); }
+
+/* The Floating Context Menu UI */
+.context-menu { 
+    position: absolute; z-index: 2000; display: flex; flex-direction: column; padding: 0.5rem; gap: 0.25rem; 
+    min-width: 160px; background: var(--surface); 
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); 
+}
+.context-menu-item { 
+    display: flex; align-items: center; gap: 0.5rem; background: none; border: none; 
+    padding: 0.6rem 0.75rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; 
+    color: var(--text-main); border-radius: 8px; text-align: left; transition: background 0.1s; 
+}
+.context-menu-item:hover { background: var(--bg-canvas); }
+.context-menu-item.danger { color: #DC2626; border-top: 1px solid var(--border-light); margin-top: 0.25rem; border-radius: 0 0 8px 8px; }
+.context-menu-item.danger:hover { background: #FEE2E2; }
 
 .sidebar-controls { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-light); }
 .sidebar-profile { margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; }
