@@ -92,9 +92,11 @@ async function loadFolders() {
     
     querySnapshot.forEach((doc) => {
         const li = document.createElement('li');
-        li.textContent = doc.data().name;
+        // UI Update: Added 3D Folder Icon
+        li.innerHTML = `<span class="icon-3d">📁</span> <span>${doc.data().name}</span>`;
+        
         li.onclick = () => {
-            document.querySelectorAll('.ios-folder-list li').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.folder-list li').forEach(el => el.classList.remove('active'));
             li.classList.add('active');
             
             currentFolderId = doc.id;
@@ -102,7 +104,7 @@ async function loadFolders() {
             
             document.getElementById('current-folder-title').textContent = currentFolderName;
             document.getElementById('add-link-form').style.display = 'flex'; 
-            document.getElementById('share-folder-btn').style.display = 'inline-block';
+            document.getElementById('share-folder-btn').style.display = 'inline-flex';
             
             loadLinks(currentFolderId);
         };
@@ -126,7 +128,7 @@ document.getElementById('save-link-btn').addEventListener('click', async () => {
     const title = document.getElementById('link-title').value.trim();
     let url = document.getElementById('link-url').value.trim();
     
-    if (!title || !url) return alert("Comprehensive meta parsing requires both fields.");
+    if (!title || !url) return alert("Please provide both a title and URL.");
     if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
 
     await addDoc(collection(db, "saved_links"), {
@@ -143,13 +145,17 @@ document.getElementById('save-link-btn').addEventListener('click', async () => {
 
 async function loadLinks(folderId) {
     const linkGrid = document.getElementById('link-grid');
-    linkGrid.innerHTML = '<div class="panel-empty-state"><p>Accessing secure vectors...</p></div>';
+    linkGrid.innerHTML = '<div class="panel-empty-state ui-card"><p>Accessing secure vectors...</p></div>';
 
     const q = query(collection(db, "saved_links"), where("folderId", "==", folderId));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-        linkGrid.innerHTML = '<div class="panel-empty-state"><p>No routes preserved in this directory partition.</p></div>';
+        linkGrid.innerHTML = `
+            <div class="panel-empty-state ui-card">
+                <span class="icon-3d large-icon">📂</span>
+                <p>No routes preserved in this directory.</p>
+            </div>`;
         return;
     }
 
@@ -157,9 +163,13 @@ async function loadLinks(folderId) {
     querySnapshot.forEach((doc) => {
         const data = doc.data();
         const card = document.createElement('div');
-        card.className = 'ios-link-card';
+        card.className = 'link-card ui-card';
+        // UI Update: Card structure matches tactile design requirements
         card.innerHTML = `
-            <h4>${data.title}</h4>
+            <div class="link-card-header">
+                <span class="icon-3d">🔗</span>
+                <h4>${data.title}</h4>
+            </div>
             <a href="${data.url}" target="_blank" class="destination-url">${data.url}</a>
         `;
         linkGrid.appendChild(card);
@@ -169,7 +179,7 @@ async function loadLinks(folderId) {
 // --- SECURE COMPILING SYSTEM: GATEWAYS ---
 document.getElementById('share-folder-btn').addEventListener('click', () => {
     if (!currentFolderId) return;
-    document.getElementById('share-link-name').textContent = `📁 Directory: ${currentFolderName}`;
+    document.getElementById('share-link-name').innerHTML = `<span class="icon-3d">📁</span> Directory: ${currentFolderName}`;
     document.getElementById('share-pin').value = '';
     document.getElementById('share-results').classList.add('hidden');
     document.getElementById('share-modal').classList.remove('hidden');
@@ -200,13 +210,13 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
         text: shareUrl,
         width: 140,
         height: 140,
-        colorDark : "#1D1D1F",
+        colorDark : "#111827",
         colorLight : "#ffffff",
     });
     
     document.getElementById('copy-link-btn').onclick = () => {
         navigator.clipboard.writeText(shareUrl);
-        alert("Secure route string mapped to clipboard.");
+        alert("Secure route string copied to clipboard.");
     };
 });
 
