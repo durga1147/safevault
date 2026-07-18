@@ -143,3 +143,4 @@ body { background: var(--bg-canvas); color: var(--text-main); height: 100vh; ove
 .status-badge { padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .status-visited { background: #FEF3C7; color: #D97706; }
 .status-unlocked { background: #D1FAE5; color: #059669; }
+.stats-sheet-width { max-width: 650px !important; }
