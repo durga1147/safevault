@@ -387,7 +387,6 @@ document.getElementById('bulk-delete-btn').addEventListener('click', async () =>
     
     if (confirm(`Delete ${checked.length} selected gateway(s)?`)) {
         for (let cb of checked) {
-            // Delete gateway logic
             await deleteDoc(doc(db, "shared_gateways", cb.value));
         }
         loadGateways();
@@ -443,7 +442,7 @@ async function fetchAndDisplayStats(gatewayId) {
     const tbody = document.getElementById('stats-table-body');
     const noMsg = document.getElementById('no-stats-msg');
     
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-muted); font-weight: 500;">Loading live sessions...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted); font-weight: 500;">Loading live sessions...</td></tr>';
     noMsg.classList.add('hidden');
 
     try {
@@ -462,11 +461,21 @@ async function fetchAndDisplayStats(gatewayId) {
             const data = doc.data();
             const tr = document.createElement('tr');
             
-            // Time Formatting
+            // Format Active Time
             const totalSecs = data.activeTime || 0;
             const m = Math.floor(totalSecs / 60);
             const s = totalSecs % 60;
             const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+
+            // Format Open Date/Time from existing Timestamp
+            let openedAtStr = "Unknown";
+            if (data.timestamp) {
+                const dateObj = data.timestamp.toDate();
+                openedAtStr = dateObj.toLocaleString('en-US', { 
+                    month: 'short', day: 'numeric', 
+                    hour: 'numeric', minute: '2-digit' 
+                });
+            }
 
             const badgeClass = data.status === 'Unlocked' ? 'status-unlocked' : 'status-visited';
 
@@ -474,11 +483,12 @@ async function fetchAndDisplayStats(gatewayId) {
                 <td><span class="icon-3d" style="font-size:0.9rem; margin-right:5px;">💻</span> ${data.deviceName || 'Unknown Device'}</td>
                 <td><span class="status-badge ${badgeClass}">${data.status}</span></td>
                 <td>${timeStr}</td>
+                <td style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">${openedAtStr}</td>
             `;
             tbody.appendChild(tr);
         });
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #DC2626;">Error fetching analytics. Check Firestore permissions.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #DC2626;">Error fetching analytics. Check Firestore permissions.</td></tr>';
         console.error("Stats Error:", error);
     }
 }
