@@ -3,12 +3,10 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, on
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
-  authDomain: "vault-98419.firebaseapp.com",
-  projectId: "vault-98419",
-  storageBucket: "vault-98419.firebasestorage.app",
-  messagingSenderId: "403052820420",
-  appId: "1:403052820420:web:a01d8e9bd29be6b4595691"
+    // ⚠️ PASTE YOUR FIREBASE CONFIGURATION HERE ⚠️
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -33,7 +31,6 @@ document.getElementById('go-to-register').addEventListener('click', () => {
     loginActions.classList.add('hidden');
     registerActions.classList.remove('hidden');
 });
-
 document.getElementById('go-to-login').addEventListener('click', () => {
     authTitle.textContent = "Sign In";
     regFields.forEach(field => field.classList.add('hidden'));
@@ -68,10 +65,8 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     const e = document.getElementById('email').value.trim();
     const p = document.getElementById('password').value;
     const cp = document.getElementById('reg-confirm-password').value;
-
     if (!name || !e || !p || !cp) return alert("All credentials fields mandatory.");
     if (p !== cp) return alert("Password mismatch.");
-    
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, e, p);
         await updateProfile(userCredential.user, { displayName: name });
@@ -80,7 +75,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 
 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-// --- DIRECTORIES ---
+// --- NOTEBOOKS (FOLDERS) ---
 async function loadFolders() {
     const q = query(collection(db, "folders"), where("userId", "==", currentUser.uid));
     const querySnapshot = await getDocs(q);
@@ -93,7 +88,7 @@ async function loadFolders() {
         
         li.innerHTML = `
             <div class="folder-name-container">
-                <span class="icon-3d">📁</span> 
+                <span class="icon-3d">📓</span> 
                 <span class="folder-text">${folderData.name}</span>
             </div>
             <button class="folder-action-btn">⋮</button>
@@ -113,10 +108,10 @@ async function loadFolders() {
             currentFolderName = folderData.name;
             
             document.getElementById('current-folder-title').textContent = currentFolderName;
-            document.getElementById('add-link-form').style.display = 'flex'; 
+            document.getElementById('compose-section').classList.remove('hidden'); 
             document.getElementById('share-folder-btn').style.display = 'inline-flex';
             
-            loadLinks(currentFolderId);
+            loadNotes(currentFolderId);
         };
         list.appendChild(li);
     });
@@ -148,7 +143,7 @@ function openFolderContextMenu(e, folderId, folderName) {
 
 document.getElementById('menu-edit').addEventListener('click', async () => {
     folderContextMenu.classList.add('hidden');
-    const newName = prompt("Rename directory:", menuTargetFolderName);
+    const newName = prompt("Rename notebook:", menuTargetFolderName);
     if (newName && newName.trim() !== "" && newName !== menuTargetFolderName) {
         await updateDoc(doc(db, "folders", menuTargetFolderId), { name: newName.trim() });
         if (currentFolderId === menuTargetFolderId) {
@@ -161,20 +156,20 @@ document.getElementById('menu-edit').addEventListener('click', async () => {
 
 document.getElementById('menu-delete').addEventListener('click', async () => {
     folderContextMenu.classList.add('hidden');
-    if (confirm(`Delete "${menuTargetFolderName}" and all contents?`)) {
-        const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetFolderId));
-        const linksSnap = await getDocs(linksQ);
-        linksSnap.forEach(async (linkDoc) => await deleteDoc(doc(db, "saved_links", linkDoc.id)));
+    if (confirm(`Delete notebook "${menuTargetFolderName}" and all its notes?`)) {
+        const notesQ = query(collection(db, "saved_notes"), where("folderId", "==", menuTargetFolderId));
+        const notesSnap = await getDocs(notesQ);
+        notesSnap.forEach(async (noteDoc) => await deleteDoc(doc(db, "saved_notes", noteDoc.id)));
 
         await deleteDoc(doc(db, "folders", menuTargetFolderId));
         
         if (currentFolderId === menuTargetFolderId) {
             currentFolderId = null;
             currentFolderName = "";
-            document.getElementById('current-folder-title').textContent = "Select a Directory";
-            document.getElementById('add-link-form').style.display = 'none';
+            document.getElementById('current-folder-title').textContent = "Select a Notebook";
+            document.getElementById('compose-section').classList.add('hidden');
             document.getElementById('share-folder-btn').style.display = 'none';
-            document.getElementById('link-grid').innerHTML = '<div class="panel-empty-state ui-card"><span class="icon-3d large-icon">🧭</span><p>Choose a folder from the sidebar.</p></div>';
+            document.getElementById('note-grid').innerHTML = '<div class="panel-empty-state ui-card"><span class="icon-3d large-icon">🧭</span><p>Choose a notebook from the sidebar.</p></div>';
         }
         loadFolders();
     }
@@ -194,51 +189,55 @@ document.getElementById('menu-duplicate').addEventListener('click', async () => 
     });
     
     const newFolderRef = await addDoc(collection(db, "folders"), { name: `${baseName} (${maxNum + 1})`, userId: currentUser.uid });
-    const linksQ = query(collection(db, "saved_links"), where("folderId", "==", menuTargetFolderId));
-    const linksSnap = await getDocs(linksQ);
+    const notesQ = query(collection(db, "saved_notes"), where("folderId", "==", menuTargetFolderId));
+    const notesSnap = await getDocs(notesQ);
     
-    for (const linkDoc of linksSnap.docs) {
-        const linkData = linkDoc.data();
-        await addDoc(collection(db, "saved_links"), { folderId: newFolderRef.id, title: linkData.title, url: linkData.url, createdAt: serverTimestamp() });
+    for (const noteDoc of notesSnap.docs) {
+        const noteData = noteDoc.data();
+        await addDoc(collection(db, "saved_notes"), { folderId: newFolderRef.id, title: noteData.title, content: noteData.content, createdAt: serverTimestamp() });
     }
     loadFolders();
 });
 
 
-// --- LINKS ---
-document.getElementById('save-link-btn').addEventListener('click', async () => {
-    if (!currentFolderId) return;
-    const title = document.getElementById('link-title').value.trim();
-    let url = document.getElementById('link-url').value.trim();
-    if (!title || !url) return alert("Title and URL required.");
-    if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+// --- SECURE TEXT NOTES ---
+document.getElementById('save-note-btn').addEventListener('click', async () => {
+    if (!currentFolderId) return alert("Select a notebook first.");
+    const title = document.getElementById('note-title').value.trim();
+    const content = document.getElementById('note-content').value.trim();
+    
+    if (!title || !content) return alert("Please provide both a title and note content.");
 
-    await addDoc(collection(db, "saved_links"), { folderId: currentFolderId, title: title, url: url, createdAt: serverTimestamp() });
-    document.getElementById('link-title').value = '';
-    document.getElementById('link-url').value = '';
-    loadLinks(currentFolderId); 
+    await addDoc(collection(db, "saved_notes"), { folderId: currentFolderId, title: title, content: content, createdAt: serverTimestamp() });
+    
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-content').value = '';
+    loadNotes(currentFolderId); 
 });
 
-async function loadLinks(folderId) {
-    const linkGrid = document.getElementById('link-grid');
-    const q = query(collection(db, "saved_links"), where("folderId", "==", folderId));
+async function loadNotes(folderId) {
+    const noteGrid = document.getElementById('note-grid');
+    const q = query(collection(db, "saved_notes"), where("folderId", "==", folderId));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-        linkGrid.innerHTML = `<div class="panel-empty-state ui-card"><span class="icon-3d large-icon">📂</span><p>No routes preserved in this directory.</p></div>`;
+        noteGrid.innerHTML = `<div class="panel-empty-state ui-card"><span class="icon-3d large-icon">📝</span><p>No notes written in this notebook yet.</p></div>`;
         return;
     }
 
-    linkGrid.innerHTML = ''; 
+    noteGrid.innerHTML = ''; 
     querySnapshot.forEach((doc) => {
         const data = doc.data();
         const card = document.createElement('div');
-        card.className = 'link-card ui-card';
+        card.className = 'note-card ui-card';
         card.innerHTML = `
-            <div class="link-card-header"><span class="icon-3d">🔗</span><h4>${data.title}</h4></div>
-            <a href="${data.url}" target="_blank" class="destination-url">${data.url}</a>
+            <div class="note-card-header">
+                <span class="icon-3d">📝</span>
+                <h4>${data.title}</h4>
+            </div>
+            <div class="note-preview">${data.content}</div>
         `;
-        linkGrid.appendChild(card);
+        noteGrid.appendChild(card);
     });
 }
 
@@ -255,18 +254,16 @@ tabCreateBtn.addEventListener('click', () => {
 tabManageBtn.addEventListener('click', () => {
     tabManageBtn.classList.add('active'); tabCreateBtn.classList.remove('active');
     tabManageView.classList.remove('hidden'); tabCreateView.classList.add('hidden');
-    loadGateways(); // Refresh list when tab opens
+    loadGateways(); 
 });
 
 // OPEN MODAL
 document.getElementById('share-folder-btn').addEventListener('click', () => {
     if (!currentFolderId) return;
-    document.getElementById('share-link-name').innerHTML = `<span class="icon-3d">📁</span> Directory: ${currentFolderName}`;
+    document.getElementById('share-link-name').innerHTML = `<span class="icon-3d">📓</span> Notebook: ${currentFolderName}`;
     document.getElementById('share-pin').value = '';
     document.getElementById('share-results').classList.add('hidden');
     document.getElementById('share-modal').classList.remove('hidden');
-    
-    // Reset to create tab
     tabCreateBtn.click();
 });
 
@@ -275,7 +272,6 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
     if(!currentFolderId) return;
     const pin = document.getElementById('share-pin').value;
     
-    // Track visits & unlocks separately
     const shareDoc = await addDoc(collection(db, "shared_gateways"), {
         folderId: currentFolderId,
         folderName: currentFolderName,
@@ -301,7 +297,7 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
     
     document.getElementById('copy-link-btn').onclick = () => {
         navigator.clipboard.writeText(shareUrl);
-        alert("Secure route string copied to clipboard.");
+        alert("Gateway URL copied to clipboard.");
     };
 });
 
@@ -314,32 +310,23 @@ document.getElementById('toggle-select-btn').addEventListener('click', (e) => {
     const actionBar = document.getElementById('bulk-action-bar');
     
     if (!isSelecting) {
-        // Turn ON selection mode
-        isSelecting = true;
-        allSelected = false;
-        btn.textContent = "Select All";
+        isSelecting = true; allSelected = false; btn.textContent = "Select All";
         document.querySelectorAll('.gateway-checkbox').forEach(cb => { cb.parentElement.classList.remove('hidden'); cb.checked = false; });
         actionBar.classList.remove('hidden');
     } else {
         if (allSelected) {
-            // Turn OFF selection mode
-            isSelecting = false;
-            allSelected = false;
-            btn.textContent = "Select";
+            isSelecting = false; allSelected = false; btn.textContent = "Select";
             document.querySelectorAll('.gateway-checkbox').forEach(cb => cb.parentElement.classList.add('hidden'));
             actionBar.classList.add('hidden');
         } else {
-            // Select ALL
-            allSelected = true;
-            btn.textContent = "Cancel";
+            allSelected = true; btn.textContent = "Cancel";
             document.querySelectorAll('.gateway-checkbox').forEach(cb => cb.checked = true);
         }
     }
 });
 
 async function loadGateways() {
-    isSelecting = false;
-    allSelected = false;
+    isSelecting = false; allSelected = false;
     document.getElementById('toggle-select-btn').textContent = "Select";
     document.getElementById('bulk-action-bar').classList.add('hidden');
 
@@ -368,9 +355,7 @@ async function loadGateways() {
         const fullUrl = `${baseUrl}view.html?id=${docSnap.id}`;
         
         li.innerHTML = `
-            <div class="checkbox-ui hidden">
-                <input type="checkbox" class="gateway-checkbox" value="${docSnap.id}">
-            </div>
+            <div class="checkbox-ui hidden"><input type="checkbox" class="gateway-checkbox" value="${docSnap.id}"></div>
             <div class="folder-name-container">
                 <span class="icon-3d">🌐</span> 
                 <div style="display:flex; flex-direction:column;">
@@ -381,34 +366,27 @@ async function loadGateways() {
             <button class="folder-action-btn gw-action-btn">⋮</button>
         `;
         
-        // Allow clicking the LI to toggle checkbox
         li.addEventListener('click', (e) => {
             if(isSelecting && !e.target.classList.contains('gw-action-btn')) {
-                const cb = li.querySelector('.gateway-checkbox');
-                cb.checked = !cb.checked;
+                const cb = li.querySelector('.gateway-checkbox'); cb.checked = !cb.checked;
             }
         });
 
-        // 3-dot context menu
         const btn = li.querySelector('.gw-action-btn');
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             openGatewayMenu(e, docSnap.id, fullUrl, data.visits || 0, data.unlocks || 0);
         });
-
         list.appendChild(li);
     });
 }
 
-// Bulk Delete
 document.getElementById('bulk-delete-btn').addEventListener('click', async () => {
     const checked = document.querySelectorAll('.gateway-checkbox:checked');
-    if (checked.length === 0) return alert("Select at least one link to delete.");
+    if (checked.length === 0) return alert("Select at least one gateway to delete.");
     
-    if (confirm(`Delete ${checked.length} selected link(s)?`)) {
-        for (let cb of checked) {
-            await deleteDoc(doc(db, "shared_gateways", cb.value));
-        }
+    if (confirm(`Delete ${checked.length} selected gateway(s)?`)) {
+        for (let cb of checked) await deleteDoc(doc(db, "shared_gateways", cb.value));
         loadGateways();
     }
 });
@@ -416,10 +394,7 @@ document.getElementById('bulk-delete-btn').addEventListener('click', async () =>
 // --- GATEWAY CONTEXT MENU ---
 const gatewayContextMenu = document.getElementById('gateway-context-menu');
 const statsModal = document.getElementById('stats-modal');
-let gwTargetId = null;
-let gwTargetUrl = null;
-let gwTargetVisits = 0;
-let gwTargetUnlocks = 0;
+let gwTargetId = null; let gwTargetUrl = null; let gwTargetVisits = 0; let gwTargetUnlocks = 0;
 
 function openGatewayMenu(e, id, url, visits, unlocks) {
     gwTargetId = id; gwTargetUrl = url; gwTargetVisits = visits; gwTargetUnlocks = unlocks;
@@ -427,7 +402,7 @@ function openGatewayMenu(e, id, url, visits, unlocks) {
     gatewayContextMenu.classList.remove('hidden');
     
     const rect = e.target.getBoundingClientRect();
-    gatewayContextMenu.style.top = `${rect.bottom + 5}px`; // Relative to modal window
+    gatewayContextMenu.style.top = `${rect.bottom + 5}px`; 
     gatewayContextMenu.style.left = `${rect.left - 130}px`; 
 }
 
@@ -444,7 +419,7 @@ document.getElementById('gateway-menu-copy').addEventListener('click', () => {
 
 document.getElementById('gateway-menu-delete').addEventListener('click', async () => {
     gatewayContextMenu.classList.add('hidden');
-    if (confirm("Delete this specific shared link?")) {
+    if (confirm("Delete this specific gateway link?")) {
         await deleteDoc(doc(db, "shared_gateways", gwTargetId));
         loadGateways();
     }
