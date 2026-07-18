@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
           apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
@@ -278,8 +278,6 @@ document.getElementById('generate-link-btn').addEventListener('click', async () 
         folderId: currentFolderId,
         folderName: currentFolderName,
         pin: pin || null,
-        visits: 0,
-        unlocks: 0,
         createdBy: currentUser.uid,
         createdAt: serverTimestamp()
     });
@@ -377,7 +375,7 @@ async function loadGateways() {
         const btn = li.querySelector('.gw-action-btn');
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            openGatewayMenu(e, docSnap.id, fullUrl, data.visits || 0, data.unlocks || 0);
+            openGatewayMenu(e, docSnap.id, fullUrl);
         });
         list.appendChild(li);
     });
@@ -388,18 +386,21 @@ document.getElementById('bulk-delete-btn').addEventListener('click', async () =>
     if (checked.length === 0) return alert("Select at least one gateway to delete.");
     
     if (confirm(`Delete ${checked.length} selected gateway(s)?`)) {
-        for (let cb of checked) await deleteDoc(doc(db, "shared_gateways", cb.value));
+        for (let cb of checked) {
+            // Delete gateway logic
+            await deleteDoc(doc(db, "shared_gateways", cb.value));
+        }
         loadGateways();
     }
 });
 
-// --- GATEWAY CONTEXT MENU ---
+// --- GATEWAY CONTEXT MENU & STATS SYSTEM ---
 const gatewayContextMenu = document.getElementById('gateway-context-menu');
 const statsModal = document.getElementById('stats-modal');
-let gwTargetId = null; let gwTargetUrl = null; let gwTargetVisits = 0; let gwTargetUnlocks = 0;
+let gwTargetId = null; let gwTargetUrl = null;
 
-function openGatewayMenu(e, id, url, visits, unlocks) {
-    gwTargetId = id; gwTargetUrl = url; gwTargetVisits = visits; gwTargetUnlocks = unlocks;
+function openGatewayMenu(e, id, url) {
+    gwTargetId = id; gwTargetUrl = url;
     folderContextMenu.classList.add('hidden');
     gatewayContextMenu.classList.remove('hidden');
     
@@ -427,12 +428,60 @@ document.getElementById('gateway-menu-delete').addEventListener('click', async (
     }
 });
 
+// STATS FETCHING LOGIC
 document.getElementById('gateway-menu-stats').addEventListener('click', () => {
     gatewayContextMenu.classList.add('hidden');
-    document.getElementById('stat-clicks').textContent = gwTargetVisits;
-    document.getElementById('stat-unlocks').textContent = gwTargetUnlocks;
     statsModal.classList.remove('hidden');
+    fetchAndDisplayStats(gwTargetId);
 });
+
+document.getElementById('refresh-stats-btn').addEventListener('click', () => {
+    if (gwTargetId) fetchAndDisplayStats(gwTargetId);
+});
+
+async function fetchAndDisplayStats(gatewayId) {
+    const tbody = document.getElementById('stats-table-body');
+    const noMsg = document.getElementById('no-stats-msg');
+    
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-muted); font-weight: 500;">Loading live sessions...</td></tr>';
+    noMsg.classList.add('hidden');
+
+    try {
+        const sessionsRef = collection(db, "shared_gateways", gatewayId, "sessions");
+        const q = query(sessionsRef, orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+
+        tbody.innerHTML = '';
+
+        if (snap.empty) {
+            noMsg.classList.remove('hidden');
+            return;
+        }
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            const tr = document.createElement('tr');
+            
+            // Time Formatting
+            const totalSecs = data.activeTime || 0;
+            const m = Math.floor(totalSecs / 60);
+            const s = totalSecs % 60;
+            const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+
+            const badgeClass = data.status === 'Unlocked' ? 'status-unlocked' : 'status-visited';
+
+            tr.innerHTML = `
+                <td><span class="icon-3d" style="font-size:0.9rem; margin-right:5px;">💻</span> ${data.deviceName || 'Unknown Device'}</td>
+                <td><span class="status-badge ${badgeClass}">${data.status}</span></td>
+                <td>${timeStr}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #DC2626;">Error fetching analytics. Check Firestore permissions.</td></tr>';
+        console.error("Stats Error:", error);
+    }
+}
 
 // Close Modals
 const closeShareModal = () => document.getElementById('share-modal').classList.add('hidden');
