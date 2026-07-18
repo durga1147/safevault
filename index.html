@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkVault | Tactile Edition</title>
+    <title>NoteVault | Secure Text Sharing</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- Authentication Screen -->
     <div id="auth-screen" class="screen active">
         <div class="auth-wrapper">
             <div class="auth-card ui-card">
                 <div class="brand-header">
                     <div class="icon-3d large-icon">🔐</div>
-                    <h1>LinkVault</h1>
-                    <p>Secure Shared Directories</p>
+                    <h1>NoteVault</h1>
+                    <p>Secure Encrypted Notes</p>
                 </div>
                 
                 <h3 id="auth-title" class="form-title">Sign In</h3>
@@ -40,21 +41,23 @@
         </div>
     </div>
 
+    <!-- Dashboard Screen -->
     <div id="dashboard-screen" class="screen layout-dashboard">
+        <!-- Sidebar Navigation -->
         <aside class="sidebar ui-card">
             <div class="sidebar-branding">
                 <span class="icon-3d">🛡️</span>
-                <h2>LinkVault</h2>
+                <h2>NoteVault</h2>
             </div>
             
             <div class="sidebar-scroll-area">
-                <span class="section-label">YOUR DIRECTORIES</span>
+                <span class="section-label">YOUR NOTEBOOKS</span>
                 <ul id="folder-list" class="folder-list"></ul>
             </div>
 
             <div class="sidebar-controls">
-                <input type="text" id="new-folder-name" class="ui-input compact" placeholder="New directory...">
-                <button id="create-folder-btn" class="btn-3d secondary full">Add Folder</button>
+                <input type="text" id="new-folder-name" class="ui-input compact" placeholder="New notebook...">
+                <button id="create-folder-btn" class="btn-3d secondary full">Add Notebook</button>
             </div>
 
             <div class="sidebar-profile">
@@ -66,33 +69,39 @@
             </div>
         </aside>
 
+        <!-- Main Workspace -->
         <main class="main-panel">
             <header class="top-header ui-card">
                 <div class="header-left">
-                    <h2 id="current-folder-title">Select a Directory</h2>
+                    <h2 id="current-folder-title">Select a Notebook</h2>
                     <button id="share-folder-btn" class="btn-3d accent small" style="display: none;">
-                        <span class="icon-3d">🔗</span> Create Sharable Link
+                        <span class="icon-3d">📤</span> Share Gateway
                     </button>
-                </div>
-                
-                <div class="add-link-form" id="add-link-form" style="display: none;">
-                    <input type="text" id="link-title" class="ui-input" placeholder="Link Title">
-                    <input type="url" id="link-url" class="ui-input" placeholder="https://...">
-                    <button id="save-link-btn" class="btn-3d primary">Secure Link</button>
                 </div>
             </header>
 
             <div class="workspace-area">
-                <div class="ui-grid" id="link-grid">
+                
+                <!-- NEW: Dedicated Note Composer -->
+                <div id="compose-section" class="ui-card compose-card hidden">
+                    <input type="text" id="note-title" class="ui-input seamless-title" placeholder="Note Title...">
+                    <textarea id="note-content" class="ui-input seamless-body" placeholder="Start typing your secure note here..." rows="3"></textarea>
+                    <div class="compose-actions">
+                        <button id="save-note-btn" class="btn-3d primary small"><span class="icon-3d">💾</span> Save Note</button>
+                    </div>
+                </div>
+
+                <div class="ui-grid" id="note-grid">
                     <div class="panel-empty-state ui-card">
                         <span class="icon-3d large-icon">🧭</span>
-                        <p>Choose a folder from the sidebar or build a new directory route.</p>
+                        <p>Choose a notebook from the sidebar to start writing.</p>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- MAIN SHARE SYSTEM MODAL -->
     <div id="share-modal" class="modal hidden">
         <div class="modal-overlay" id="modal-backdrop"></div>
         <div class="modal-sheet ui-card">
@@ -102,11 +111,12 @@
             </div>
             
             <div class="modal-tabs">
-                <button class="tab-btn active" id="tab-create-btn">Create New Link</button>
-                <button class="tab-btn" id="tab-manage-btn">All Created Links</button>
+                <button class="tab-btn active" id="tab-create-btn">Create Gateway</button>
+                <button class="tab-btn" id="tab-manage-btn">Active Gateways</button>
             </div>
 
             <div class="modal-sheet-body">
+                <!-- TAB 1: CREATE NEW -->
                 <div id="tab-create-view" class="tab-content">
                     <div class="directory-target-pill" id="share-link-name"></div>
                     
@@ -116,10 +126,10 @@
                             <span class="icon-3d">🔒</span>
                             <input type="password" id="share-pin" class="ui-input center-text" placeholder="4 to 6 digit code">
                         </div>
-                        <small>Leave completely empty for public access paths.</small>
+                        <small>Leave empty to allow public access to these notes.</small>
                     </div>
                     
-                    <button id="generate-link-btn" class="btn-3d primary full">Compile Shared Gateway</button>
+                    <button id="generate-link-btn" class="btn-3d primary full">Compile Secure Gateway</button>
 
                     <div id="share-results" class="share-output hidden">
                         <div class="copy-matrix">
@@ -132,15 +142,16 @@
                     </div>
                 </div>
 
+                <!-- TAB 2: MANAGE -->
                 <div id="tab-manage-view" class="tab-content hidden">
                     <div class="manager-header">
-                        <span style="font-weight: 700; color: var(--text-main);">Active Gateways</span>
+                        <span style="font-weight: 700; color: var(--text-main);">Gateway Access Points</span>
                         <button id="toggle-select-btn" class="text-link-btn">Select</button>
                     </div>
                     
                     <div class="manager-list-area">
                         <ul id="gateway-list" class="folder-list"></ul>
-                        <p id="no-gateways-msg" class="hidden" style="text-align: center; color: var(--text-muted); padding: 1rem 0;">No active links for this directory.</p>
+                        <p id="no-gateways-msg" class="hidden" style="text-align: center; color: var(--text-muted); padding: 1rem 0;">No active gateways for this notebook.</p>
                     </div>
 
                     <div id="bulk-action-bar" class="hidden" style="margin-top: 1rem;">
@@ -151,11 +162,12 @@
         </div>
     </div>
 
+    <!-- STATS OVERLAY MODAL -->
     <div id="stats-modal" class="modal hidden" style="z-index: 2500;">
         <div class="modal-overlay" id="stats-modal-backdrop" style="background: rgba(0,0,0,0.6);"></div>
         <div class="modal-sheet ui-card" style="max-width: 350px;">
             <div class="modal-sheet-header">
-                <h3>Gateway Statistics</h3>
+                <h3>Gateway Analytics</h3>
                 <button id="close-stats-btn" class="close-pill">✕</button>
             </div>
             <div class="modal-sheet-body" style="text-align: center; gap: 2rem;">
@@ -163,7 +175,7 @@
                 <div style="display: flex; justify-content: space-around;">
                     <div>
                         <div style="font-size: 2rem; font-weight: 800; color: var(--primary);" id="stat-clicks">0</div>
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Clicks</div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Visits</div>
                     </div>
                     <div>
                         <div style="font-size: 2rem; font-weight: 800; color: var(--accent);" id="stat-unlocks">0</div>
@@ -174,6 +186,7 @@
         </div>
     </div>
 
+    <!-- Global Context Menus -->
     <div id="folder-context-menu" class="context-menu ui-card hidden">
         <button class="context-menu-item" id="menu-edit"><span class="icon-3d">✏️</span> Rename</button>
         <button class="context-menu-item" id="menu-duplicate"><span class="icon-3d">📋</span> Duplicate</button>
