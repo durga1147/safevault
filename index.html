@@ -3,208 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoteVault | Secure Text Sharing</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>NoteVault | Secure Gateway</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .gateway-shell { width: 100%; max-width: 650px; margin: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 20; }
+        .centered-card { padding: 4rem 2.5rem; text-align: center; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; }
+        .stacked-list-box { width: 100%; text-align: left; padding: 2rem; background: var(--bg-canvas); border: 2px solid var(--secondary); border-radius: var(--radius-card); }
+        
+        .visitor-note-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; border: 2px solid var(--border-light); border-radius: var(--radius-input); background: var(--surface); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .visitor-note-card h4 { font-size: 1.2rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; border-bottom: 2px solid var(--border-light); padding-bottom: 0.75rem; }
+        .visitor-note-card .note-content { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+    </style>
 </head>
 <body>
 
-    <!-- Authentication Screen -->
-    <div id="auth-screen" class="screen active">
-        <div class="auth-wrapper">
-            <div class="auth-card ui-card">
-                <div class="brand-header">
-                    <div class="icon-3d large-icon">🔐</div>
-                    <h1>NoteVault</h1>
-                    <p>Secure Encrypted Notes</p>
+    <div class="screen active" style="align-items: flex-start; padding-top: 5vh; overflow-y: auto;">
+        <!-- Locked Gateway -->
+        <div class="gateway-shell" id="unlock-container">
+            <div class="ui-card centered-card">
+                <span class="icon-3d large-icon">🛡️</span>
+                <h3 style="font-size: 1.5rem; font-weight: 800;">NoteVault Gateway</h3>
+                
+                <div id="pin-section" class="form-group hidden" style="width: 100%; margin-top: 1rem;">
+                    <label style="color: var(--text-muted);">Enter Access PIN</label>
+                    <input type="password" id="access-pin" class="ui-input center-text" placeholder="••••" style="font-size: 1.5rem; letter-spacing: 0.3em; padding: 1rem;">
                 </div>
                 
-                <h3 id="auth-title" class="form-title">Sign In</h3>
-                
-                <div class="input-stack">
-                    <input type="text" id="reg-name" class="auth-reg-field hidden ui-input" placeholder="Full Name">
-                    <input type="email" id="email" class="ui-input" placeholder="Email Address">
-                    <input type="password" id="password" class="ui-input" placeholder="Password">
-                    <input type="password" id="reg-confirm-password" class="auth-reg-field hidden ui-input" placeholder="Confirm Password">
-                </div>
-                
-                <div id="login-actions" class="action-stack">
-                    <button id="login-btn" class="btn-3d primary full">Sign In</button>
-                    <p class="switch-text">Don't have an account? <span id="go-to-register">Create one</span></p>
-                </div>
-                
-                <div id="register-actions" class="action-stack hidden">
-                    <button id="register-btn" class="btn-3d primary full">Create Account</button>
-                    <p class="switch-text">Already have an account? <span id="go-to-login">Sign in</span></p>
-                </div>
+                <button id="access-btn" class="btn-3d primary full" style="margin-top: 1rem;">Decrypt Notebook</button>
             </div>
         </div>
+
+        <!-- Decrypted Notebook Notes -->
+        <div class="gateway-shell hidden" id="destination-container"></div>
     </div>
 
-    <!-- Dashboard Screen -->
-    <div id="dashboard-screen" class="screen layout-dashboard">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar ui-card">
-            <div class="sidebar-branding">
-                <span class="icon-3d">🛡️</span>
-                <h2>NoteVault</h2>
-            </div>
-            
-            <div class="sidebar-scroll-area">
-                <span class="section-label">YOUR NOTEBOOKS</span>
-                <ul id="folder-list" class="folder-list"></ul>
-            </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, updateDoc, addDoc, collection, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            // ⚠️ PASTE YOUR FIREBASE CONFIGURATION HERE ⚠️
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-            <div class="sidebar-controls">
-                <input type="text" id="new-folder-name" class="ui-input compact" placeholder="New notebook...">
-                <button id="create-folder-btn" class="btn-3d secondary full">Add Notebook</button>
-            </div>
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkId = urlParams.get('id');
+        
+        let sessionRef = null;
+        let activeSeconds = 0;
 
-            <div class="sidebar-profile">
-                <div class="user-badge">
-                    <span class="icon-3d">👤</span>
-                    <span id="user-greeting">User</span>
-                </div>
-                <button id="logout-btn" class="text-link-btn">Sign Out</button>
-            </div>
-        </aside>
+        // --- ADVANCED DEVICE DETECTION ---
+        async function getDeviceName() {
+            let os = "Unknown Device";
+            let browser = "Unknown Browser";
+            let exactModel = "";
 
-        <!-- Main Workspace -->
-        <main class="main-panel">
-            <header class="top-header ui-card">
-                <div class="header-left">
-                    <h2 id="current-folder-title">Select a Notebook</h2>
-                    <button id="share-folder-btn" class="btn-3d accent small" style="display: none;">
-                        <span class="icon-3d">📤</span> Share Gateway
-                    </button>
-                </div>
-            </header>
+            const ua = navigator.userAgent;
 
-            <div class="workspace-area">
-                <!-- Dedicated Note Composer -->
-                <div id="compose-section" class="ui-card compose-card hidden">
-                    <input type="text" id="note-title" class="ui-input seamless-title" placeholder="Note Title...">
-                    <textarea id="note-content" class="ui-input seamless-body" placeholder="Start typing your secure note here..." rows="3"></textarea>
-                    <div class="compose-actions">
-                        <button id="save-note-btn" class="btn-3d primary small"><span class="icon-3d">💾</span> Save Note</button>
-                    </div>
-                </div>
+            // 1. Basic Browser Parsing
+            if (/Edg/i.test(ua)) browser = "Edge";
+            else if (/Firefox/i.test(ua)) browser = "Firefox";
+            else if (/Chrome/i.test(ua) && !/Edg|OPR/i.test(ua)) browser = "Chrome";
+            else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+            else if (/OPR/i.test(ua)) browser = "Opera";
 
-                <div class="ui-grid" id="note-grid">
-                    <div class="panel-empty-state ui-card">
-                        <span class="icon-3d large-icon">🧭</span>
-                        <p>Choose a notebook from the sidebar to start writing.</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
+            // 2. Platform Parsing (Apple restricts model numbers natively)
+            if (/iPhone/i.test(ua)) { os = "iPhone"; exactModel = "iPhone"; } 
+            else if (/iPad/i.test(ua)) { os = "iPad"; exactModel = "iPad"; }
+            else if (/Mac OS X/i.test(ua)) { os = "Mac"; exactModel = "MacBook/Mac"; }
+            else if (/Windows/i.test(ua)) { os = "Windows PC"; exactModel = "Windows PC"; }
+            else if (/Linux/i.test(ua) && !/Android/i.test(ua)) { os = "Linux PC"; exactModel = "Linux PC"; }
+            else if (/Android/i.test(ua)) os = "Android";
 
-    <!-- MAIN SHARE SYSTEM MODAL -->
-    <div id="share-modal" class="modal hidden">
-        <div class="modal-overlay" id="modal-backdrop"></div>
-        <div class="modal-sheet ui-card">
-            <div class="modal-sheet-header">
-                <h3>Gateway Manager</h3>
-                <button id="close-modal-btn" class="close-pill">✕</button>
-            </div>
-            
-            <div class="modal-tabs">
-                <button class="tab-btn active" id="tab-create-btn">Create Gateway</button>
-                <button class="tab-btn" id="tab-manage-btn">Active Gateways</button>
-            </div>
+            // 3. Modern Chromium API for exact Android Hardware Models
+            if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+                try {
+                    const highEntropy = await navigator.userAgentData.getHighEntropyValues(['model']);
+                    if (highEntropy.model) {
+                        exactModel = highEntropy.model;
+                    }
+                } catch (e) { console.warn("Client hints blocked."); }
+            }
 
-            <div class="modal-sheet-body">
-                <!-- TAB 1: CREATE NEW -->
-                <div id="tab-create-view" class="tab-content">
-                    <div class="directory-target-pill" id="share-link-name"></div>
-                    
-                    <div class="form-group">
-                        <label>Restrict Access with PIN (Optional)</label>
-                        <div class="pin-input-wrapper">
-                            <span class="icon-3d">🔒</span>
-                            <input type="password" id="share-pin" class="ui-input center-text" placeholder="4 to 6 digit code">
+            // 4. Legacy Regex Fallback for older Android devices
+            if (!exactModel && os === "Android") {
+                const match = ua.match(/Android\s[0-9\.]+(?:;\s[a-z]{2}-[a-z]{2})?;\s([^;]+)\sBuild/i);
+                if (match && match[1]) exactModel = match[1].trim();
+                else exactModel = "Android Device";
+            }
+
+            return `${exactModel} (${browser})`;
+        }
+
+        async function verifyAndLoad() {
+            try {
+                if (!linkId) return alert("Invalid Gateway Token.");
+                const docRef = doc(db, "shared_gateways", linkId);
+                const docSnap = await getDoc(docRef);
+
+                if (!docSnap.exists()) {
+                    document.querySelector('.centered-card').innerHTML = `<span class="icon-3d large-icon">⚠️</span><h3>Gateway Expired</h3><p style="color: var(--text-muted);">This notebook is no longer being shared.</p>`;
+                    return;
+                }
+
+                // Initialize Live Tracker if not yet set up
+                if (!sessionRef) {
+                    try {
+                        const sessionsCol = collection(db, "shared_gateways", linkId, "sessions");
+                        
+                        // Wait for the hardware parser to finish checking the device
+                        const deviceString = await getDeviceName(); 
+                        
+                        sessionRef = await addDoc(sessionsCol, {
+                            deviceName: deviceString,
+                            status: "Visited",
+                            activeTime: 0,
+                            timestamp: serverTimestamp()
+                        });
+
+                        // Start 5-second active reading tracker
+                        setInterval(async () => {
+                            if (document.visibilityState === 'visible') {
+                                activeSeconds += 5;
+                                try { await updateDoc(sessionRef, { activeTime: activeSeconds }); } catch(e){}
+                            }
+                        }, 5000);
+                    } catch(e) { console.warn("Live tracking offline - check Firestore Rules."); }
+                }
+
+                const data = docSnap.data();
+                const pinSection = document.getElementById('pin-section');
+                const pinInput = document.getElementById('access-pin').value;
+
+                if (data.pin && pinSection.classList.contains('hidden')) {
+                    pinSection.classList.remove('hidden');
+                    return; 
+                }
+
+                if (data.pin && data.pin !== pinInput) {
+                    alert("Incorrect PIN entered.");
+                    document.getElementById('access-pin').value = '';
+                    return;
+                }
+
+                // PIN Correct / Public Bypass - Mark Session as Unlocked
+                if (sessionRef) {
+                    try { await updateDoc(sessionRef, { status: "Unlocked" }); } catch(e){}
+                }
+
+                document.getElementById('unlock-container').classList.add('hidden');
+                const destContainer = document.getElementById('destination-container');
+                destContainer.classList.remove('hidden');
+                
+                destContainer.innerHTML = `
+                    <div class="stacked-list-box">
+                        <div style="display: flex; align-items: center; gap: 1rem; border-bottom: 2px solid var(--secondary-dark); padding-bottom: 1.5rem; margin-bottom: 2rem;">
+                            <span class="icon-3d" style="font-size: 2.2rem;">📓</span>
+                            <div>
+                                <h2 style="font-weight:800; font-size:1.6rem;">${data.folderName}</h2>
+                                <p style="color: var(--primary); font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">Verified Secure Notebook</p>
+                            </div>
                         </div>
-                        <small>Leave empty to allow public access to these notes.</small>
-                    </div>
-                    
-                    <button id="generate-link-btn" class="btn-3d primary full">Compile Secure Gateway</button>
-
-                    <div id="share-results" class="share-output hidden">
-                        <div class="copy-matrix">
-                            <input type="text" id="shareable-link" class="ui-input" readonly>
-                            <button id="copy-link-btn" class="btn-3d secondary">Copy</button>
-                        </div>
-                        <div class="qr-canvas-holder">
-                            <div id="qrcode-container"></div>
+                        <div id="gateway-notes-list" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <p style="color: var(--text-muted);">Decrypting notes...</p>
                         </div>
                     </div>
-                </div>
+                `;
 
-                <!-- TAB 2: MANAGE -->
-                <div id="tab-manage-view" class="tab-content hidden">
-                    <div class="manager-header">
-                        <span style="font-weight: 700; color: var(--text-main);">Gateway Access Points</span>
-                        <button id="toggle-select-btn" class="text-link-btn">Select</button>
-                    </div>
-                    
-                    <div class="manager-list-area">
-                        <ul id="gateway-list" class="folder-list"></ul>
-                        <p id="no-gateways-msg" class="hidden" style="text-align: center; color: var(--text-muted); padding: 1rem 0;">No active gateways for this notebook.</p>
-                    </div>
+                const notesQuery = query(collection(db, "saved_notes"), where("folderId", "==", data.folderId));
+                const notesSnapshot = await getDocs(notesQuery);
+                const listWrapper = document.getElementById('gateway-notes-list');
+                listWrapper.innerHTML = "";
 
-                    <div id="bulk-action-bar" class="hidden" style="margin-top: 1rem;">
-                        <button id="bulk-delete-btn" class="btn-3d full" style="background: #DC2626; color: white;">Delete Selected</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                if(notesSnapshot.empty) {
+                    listWrapper.innerHTML = `<p style="color: var(--text-muted); font-style: italic; text-align: center;">This notebook is completely empty.</p>`;
+                    return;
+                }
 
-    <!-- GRANULAR STATS MODAL -->
-    <div id="stats-modal" class="modal hidden" style="z-index: 2500;">
-        <div class="modal-overlay" id="stats-modal-backdrop" style="background: rgba(0,0,0,0.6);"></div>
-        <div class="modal-sheet ui-card" style="max-width: 550px; width: 95%;">
-            <div class="modal-sheet-header">
-                <h3><span class="icon-3d">📊</span> Live Analytics</h3>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button id="refresh-stats-btn" class="btn-3d secondary small"><span class="icon-3d">🔄</span> Refresh</button>
-                    <button id="close-stats-btn" class="close-pill">✕</button>
-                </div>
-            </div>
-            <div class="modal-sheet-body" style="padding: 1rem;">
-                <div class="table-container">
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Device Name</th>
-                                <th>Status</th>
-                                <th>Active Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stats-table-body">
-                            <!-- Populated dynamically via JS -->
-                        </tbody>
-                    </table>
-                    <p id="no-stats-msg" class="hidden" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">No sessions recorded for this gateway yet.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+                notesSnapshot.forEach(noteDoc => {
+                    const noteData = noteDoc.data();
+                    const noteItem = document.createElement('div');
+                    noteItem.className = "visitor-note-card";
+                    noteItem.innerHTML = `
+                        <h4><span class="icon-3d">📝</span> ${noteData.title}</h4>
+                        <div class="note-content">${noteData.content}</div>
+                    `;
+                    listWrapper.appendChild(noteItem);
+                });
+                
+            } catch (globalError) {
+                console.error("Critical Exception: ", globalError);
+                alert("Decryption pipeline failure: " + globalError.message);
+            }
+        }
 
-    <!-- Global Context Menus -->
-    <div id="folder-context-menu" class="context-menu ui-card hidden">
-        <button class="context-menu-item" id="menu-edit"><span class="icon-3d">✏️</span> Rename</button>
-        <button class="context-menu-item" id="menu-duplicate"><span class="icon-3d">📋</span> Duplicate</button>
-        <button class="context-menu-item danger" id="menu-delete"><span class="icon-3d">🗑️</span> Delete</button>
-    </div>
-
-    <div id="gateway-context-menu" class="context-menu ui-card hidden" style="z-index: 2000;">
-        <button class="context-menu-item" id="gateway-menu-copy"><span class="icon-3d">🔗</span> Copy Link</button>
-        <button class="context-menu-item" id="gateway-menu-stats"><span class="icon-3d">📈</span> Show Stats</button>
-        <button class="context-menu-item danger" id="gateway-menu-delete"><span class="icon-3d">🗑️</span> Delete</button>
-    </div>
-
-    <script type="module" src="app.js"></script>
+        document.getElementById('access-btn').addEventListener('click', verifyAndLoad);
+        verifyAndLoad();
+    </script>
 </body>
 </html>
