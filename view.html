@@ -41,14 +41,14 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, doc, getDoc, updateDoc, addDoc, collection, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         
-        const firebaseConfig = {
+const firebaseConfig = {
           apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
           authDomain: "vault-98419.firebaseapp.com",
           projectId: "vault-98419",
           storageBucket: "vault-98419.firebasestorage.app",
           messagingSenderId: "403052820420",
           appId: "1:403052820420:web:a01d8e9bd29be6b4595691"
-        };
+};
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -67,14 +67,12 @@
 
             const ua = navigator.userAgent;
 
-            // 1. Basic Browser Parsing
             if (/Edg/i.test(ua)) browser = "Edge";
             else if (/Firefox/i.test(ua)) browser = "Firefox";
             else if (/Chrome/i.test(ua) && !/Edg|OPR/i.test(ua)) browser = "Chrome";
             else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
             else if (/OPR/i.test(ua)) browser = "Opera";
 
-            // 2. Platform Parsing (Apple restricts model numbers natively)
             if (/iPhone/i.test(ua)) { os = "iPhone"; exactModel = "iPhone"; } 
             else if (/iPad/i.test(ua)) { os = "iPad"; exactModel = "iPad"; }
             else if (/Mac OS X/i.test(ua)) { os = "Mac"; exactModel = "MacBook/Mac"; }
@@ -82,7 +80,6 @@
             else if (/Linux/i.test(ua) && !/Android/i.test(ua)) { os = "Linux PC"; exactModel = "Linux PC"; }
             else if (/Android/i.test(ua)) os = "Android";
 
-            // 3. Modern Chromium API for exact Android Hardware Models
             if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
                 try {
                     const highEntropy = await navigator.userAgentData.getHighEntropyValues(['model']);
@@ -92,7 +89,6 @@
                 } catch (e) { console.warn("Client hints blocked."); }
             }
 
-            // 4. Legacy Regex Fallback for older Android devices
             if (!exactModel && os === "Android") {
                 const match = ua.match(/Android\s[0-9\.]+(?:;\s[a-z]{2}-[a-z]{2})?;\s([^;]+)\sBuild/i);
                 if (match && match[1]) exactModel = match[1].trim();
@@ -118,17 +114,15 @@
                     try {
                         const sessionsCol = collection(db, "shared_gateways", linkId, "sessions");
                         
-                        // Wait for the hardware parser to finish checking the device
                         const deviceString = await getDeviceName(); 
                         
                         sessionRef = await addDoc(sessionsCol, {
                             deviceName: deviceString,
                             status: "Visited",
                             activeTime: 0,
-                            timestamp: serverTimestamp()
+                            timestamp: serverTimestamp() // <-- This runs the "Opened At" time automatically
                         });
 
-                        // Start 5-second active reading tracker
                         setInterval(async () => {
                             if (document.visibilityState === 'visible') {
                                 activeSeconds += 5;
@@ -153,7 +147,6 @@
                     return;
                 }
 
-                // PIN Correct / Public Bypass - Mark Session as Unlocked
                 if (sessionRef) {
                     try { await updateDoc(sessionRef, { status: "Unlocked" }); } catch(e){}
                 }
