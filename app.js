@@ -447,7 +447,9 @@ async function fetchAndDisplayStats(gatewayId) {
 
     try {
         const sessionsRef = collection(db, "shared_gateways", gatewayId, "sessions");
-        const q = query(sessionsRef, orderBy("timestamp", "desc"));
+        
+        // Remove orderBy to prevent missing-index errors or missing-data filtering
+        const q = query(sessionsRef); 
         const snap = await getDocs(q);
 
         tbody.innerHTML = '';
@@ -457,33 +459,42 @@ async function fetchAndDisplayStats(gatewayId) {
             return;
         }
 
-        snap.forEach(doc => {
-            const data = doc.data();
-            const tr = document.createElement('tr');
-            
+        // Sort manually in JavaScript to avoid Firestore index requirements
+        const sessions = [];
+        snap.forEach(doc => sessions.push(doc.data()));
+        sessions.sort((a, b) => {
+            const timeA = a.openedAtISO ? new Date(a.openedAtISO).getTime() : 0;
+            const timeB = b.openedAtISO ? new Date(b.openedAtISO).getTime() : 0;
+            return timeB - timeA;
+        });
+
+        sessions.forEach(data => {
             // Format Active Time
             const totalSecs = data.activeTime || 0;
             const m = Math.floor(totalSecs / 60);
             const s = totalSecs % 60;
             const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
 
-            // Format Open Date/Time from existing Timestamp
-            let openedAtStr = "Unknown";
-            if (data.timestamp) {
-                const dateObj = data.timestamp.toDate();
-                openedAtStr = dateObj.toLocaleString('en-US', { 
-                    month: 'short', day: 'numeric', 
-                    hour: 'numeric', minute: '2-digit' 
-                });
+            // DUAL-FALLBACK DATE FORMATTING (Bulletproof)
+            let openedAtStr = "Just now";
+            try {
+                if (data.openedAtISO) {
+                    openedAtStr = new Date(data.openedAtISO).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                } else if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+                    openedAtStr = data.timestamp.toDate().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                }
+            } catch(e) {
+                console.warn("Date parsing failed", e);
             }
 
             const badgeClass = data.status === 'Unlocked' ? 'status-unlocked' : 'status-visited';
 
+            const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><span class="icon-3d" style="font-size:0.9rem; margin-right:5px;">💻</span> ${data.deviceName || 'Unknown Device'}</td>
+                <td style="white-space: nowrap;"><span class="icon-3d" style="font-size:0.9rem; margin-right:5px;">💻</span> ${data.deviceName || 'Unknown'}</td>
                 <td><span class="status-badge ${badgeClass}">${data.status}</span></td>
                 <td>${timeStr}</td>
-                <td style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">${openedAtStr}</td>
+                <td style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">${openedAtStr}</td>
             `;
             tbody.appendChild(tr);
         });
