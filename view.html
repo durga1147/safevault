@@ -3,36 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkVault | Secure Destination</title>
+    <title>NoteVault | Secure Gateway</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        .gateway-shell { width: 100%; max-width: 500px; margin: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 20; }
+        .gateway-shell { width: 100%; max-width: 650px; margin: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; position: relative; z-index: 20; }
         .centered-card { padding: 4rem 2.5rem; text-align: center; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; }
-        .stacked-list-box { width: 100%; text-align: left; padding: 2rem; }
-        .visitor-link-card { display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 2px solid var(--border-light); border-radius: var(--radius-input); text-decoration: none; color: var(--text-main); transition: all 0.2s; background: var(--surface); }
-        .visitor-link-card:hover { border-color: var(--primary); transform: translateX(4px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .visitor-link-card .details { display: flex; flex-direction: column; overflow: hidden; }
-        .visitor-link-card h4 { font-size: 1.05rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
-        .visitor-link-card span { color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; text-overflow: ellipsis; }
+        .stacked-list-box { width: 100%; text-align: left; padding: 2rem; background: var(--bg-canvas); border: 2px solid var(--secondary); border-radius: var(--radius-card); }
+        
+        .visitor-note-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; border: 2px solid var(--border-light); border-radius: var(--radius-input); background: var(--surface); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .visitor-note-card h4 { font-size: 1.2rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; border-bottom: 2px solid var(--border-light); padding-bottom: 0.75rem; }
+        .visitor-note-card .note-content { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
     </style>
 </head>
 <body>
 
-    <div class="screen active" style="justify-content: center; align-items: center;">
+    <div class="screen active" style="align-items: flex-start; padding-top: 5vh; overflow-y: auto;">
+        
+        <!-- Locked Gateway -->
         <div class="gateway-shell" id="unlock-container">
             <div class="ui-card centered-card">
                 <span class="icon-3d large-icon">🛡️</span>
-                <h3 style="font-size: 1.5rem; font-weight: 800;">Secure Gateway</h3>
+                <h3 style="font-size: 1.5rem; font-weight: 800;">NoteVault Gateway</h3>
                 
                 <div id="pin-section" class="form-group hidden" style="width: 100%; margin-top: 1rem;">
                     <label style="color: var(--text-muted);">Enter Access PIN</label>
                     <input type="password" id="access-pin" class="ui-input center-text" placeholder="••••" style="font-size: 1.5rem; letter-spacing: 0.3em; padding: 1rem;">
                 </div>
                 
-                <button id="access-btn" class="btn-3d primary full" style="margin-top: 1rem;">Decrypt Secure Route</button>
+                <button id="access-btn" class="btn-3d primary full" style="margin-top: 1rem;">Decrypt Notebook</button>
             </div>
         </div>
 
+        <!-- Decrypted Notebook Notes -->
         <div class="gateway-shell hidden" id="destination-container"></div>
     </div>
 
@@ -41,12 +43,10 @@
         import { getFirestore, doc, getDoc, updateDoc, increment, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         
         const firebaseConfig = {
-          apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
-          authDomain: "vault-98419.firebaseapp.com",
-          projectId: "vault-98419",
-          storageBucket: "vault-98419.firebasestorage.app",
-          messagingSenderId: "403052820420",
-          appId: "1:403052820420:web:a01d8e9bd29be6b4595691"
+            // ⚠️ PASTE YOUR FIREBASE CONFIGURATION HERE ⚠️
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID"
         };
         
         const app = initializeApp(firebaseConfig);
@@ -54,8 +54,6 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const linkId = urlParams.get('id');
-
-        // Track if we've already counted a visit for this session
         let visitTracked = false;
 
         async function verifyAndLoad() {
@@ -66,11 +64,10 @@
                 const docSnap = await getDoc(docRef);
 
                 if (!docSnap.exists()) {
-                    document.querySelector('.centered-card').innerHTML = `<span class="icon-3d large-icon">⚠️</span><h3>Gateway Expired</h3><p style="color: var(--text-muted);">This link is no longer active.</p>`;
+                    document.querySelector('.centered-card').innerHTML = `<span class="icon-3d large-icon">⚠️</span><h3>Gateway Expired</h3><p style="color: var(--text-muted);">This notebook is no longer being shared.</p>`;
                     return;
                 }
 
-                // 1. Initial Load - Track Visit exactly once
                 if (!visitTracked) {
                     try { await updateDoc(docRef, { visits: increment(1) }); visitTracked = true; } catch (e) { }
                 }
@@ -90,7 +87,6 @@
                     return;
                 }
 
-                // 2. Successful PIN or Public Link - Track Unlock
                 try { await updateDoc(docRef, { unlocks: increment(1) }); } catch (e) { }
 
                 document.getElementById('unlock-container').classList.add('hidden');
@@ -98,46 +94,43 @@
                 destContainer.classList.remove('hidden');
                 
                 destContainer.innerHTML = `
-                    <div class="ui-card stacked-list-box">
-                        <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 2px solid var(--border-light); padding-bottom: 1rem; margin-bottom: 1.5rem;">
-                            <span class="icon-3d" style="font-size: 1.8rem;">📁</span>
+                    <div class="stacked-list-box">
+                        <div style="display: flex; align-items: center; gap: 1rem; border-bottom: 2px solid var(--secondary-dark); padding-bottom: 1.5rem; margin-bottom: 2rem;">
+                            <span class="icon-3d" style="font-size: 2.2rem;">📓</span>
                             <div>
-                                <h2 style="font-weight:800; font-size:1.4rem;">${data.folderName}</h2>
-                                <p style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Verified Shared Directory</p>
+                                <h2 style="font-weight:800; font-size:1.6rem;">${data.folderName}</h2>
+                                <p style="color: var(--primary); font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem;">Verified Secure Notebook</p>
                             </div>
                         </div>
-                        <div id="gateway-links-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <p style="color: var(--text-muted);">Loading links...</p>
+                        <div id="gateway-notes-list" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <p style="color: var(--text-muted);">Decrypting notes...</p>
                         </div>
                     </div>
                 `;
 
-                const linksQuery = query(collection(db, "saved_links"), where("folderId", "==", data.folderId));
-                const linksSnapshot = await getDocs(linksQuery);
-                const listWrapper = document.getElementById('gateway-links-list');
+                // Query Notes instead of Links
+                const notesQuery = query(collection(db, "saved_notes"), where("folderId", "==", data.folderId));
+                const notesSnapshot = await getDocs(notesQuery);
+                const listWrapper = document.getElementById('gateway-notes-list');
                 listWrapper.innerHTML = "";
 
-                if(linksSnapshot.empty) {
-                    listWrapper.innerHTML = `<p style="color: var(--text-muted); font-style: italic;">This folder is empty.</p>`;
+                if(notesSnapshot.empty) {
+                    listWrapper.innerHTML = `<p style="color: var(--text-muted); font-style: italic; text-align: center;">This notebook is completely empty.</p>`;
                     return;
                 }
 
-                linksSnapshot.forEach(linkDoc => {
-                    const linkData = linkDoc.data();
-                    const linkItem = document.createElement('a');
-                    linkItem.href = linkData.url;
-                    linkItem.target = "_blank";
-                    linkItem.className = "visitor-link-card";
+                notesSnapshot.forEach(noteDoc => {
+                    const noteData = noteDoc.data();
+                    const noteItem = document.createElement('div');
+                    noteItem.className = "visitor-note-card";
                     
-                    linkItem.innerHTML = `
-                        <span class="icon-3d">🔗</span>
-                        <div class="details">
-                            <h4>${linkData.title}</h4>
-                            <span>${linkData.url}</span>
-                        </div>
+                    // Render Title and secure text block formatted safely
+                    noteItem.innerHTML = `
+                        <h4><span class="icon-3d">📝</span> ${noteData.title}</h4>
+                        <div class="note-content">${noteData.content}</div>
                     `;
 
-                    listWrapper.appendChild(linkItem);
+                    listWrapper.appendChild(noteItem);
                 });
                 
             } catch (globalError) {
