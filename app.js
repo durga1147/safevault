@@ -3,10 +3,12 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, on
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-    // ⚠️ PASTE YOUR FIREBASE CONFIGURATION HERE ⚠️
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID"
+          apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
+          authDomain: "vault-98419.firebaseapp.com",
+          projectId: "vault-98419",
+          storageBucket: "vault-98419.firebasestorage.app",
+          messagingSenderId: "403052820420",
+          appId: "1:403052820420:web:a01d8e9bd29be6b4595691"
 };
 
 const app = initializeApp(firebaseConfig);
