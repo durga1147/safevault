@@ -164,7 +164,8 @@
     <!-- GRANULAR STATS MODAL -->
     <div id="stats-modal" class="modal hidden" style="z-index: 2500;">
         <div class="modal-overlay" id="stats-modal-backdrop" style="background: rgba(0,0,0,0.6);"></div>
-        <!-- Modal width increased in style.css to fit the new column -->
+        
+        <!-- Modified: class 'stats-sheet-width' gives the modal more breathing room for the new date column -->
         <div class="modal-sheet ui-card stats-sheet-width">
             <div class="modal-sheet-header">
                 <h3><span class="icon-3d">📊</span> Live Analytics</h3>
@@ -181,7 +182,7 @@
                                 <th>Device Name</th>
                                 <th>Status</th>
                                 <th>Active Time</th>
-                                <th>Opened At</th>
+                                <th>Opened At</th> <!-- The new column explicitly added here -->
                             </tr>
                         </thead>
                         <tbody id="stats-table-body">
