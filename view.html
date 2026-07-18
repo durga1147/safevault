@@ -113,14 +113,15 @@ const firebaseConfig = {
                 if (!sessionRef) {
                     try {
                         const sessionsCol = collection(db, "shared_gateways", linkId, "sessions");
-                        
                         const deviceString = await getDeviceName(); 
                         
+                        // DUAL TIMESTAMP BACKUP: Saves both server time and instant browser time
                         sessionRef = await addDoc(sessionsCol, {
                             deviceName: deviceString,
                             status: "Visited",
                             activeTime: 0,
-                            timestamp: serverTimestamp() // <-- This runs the "Opened At" time automatically
+                            openedAtISO: new Date().toISOString(), 
+                            timestamp: serverTimestamp() 
                         });
 
                         setInterval(async () => {
