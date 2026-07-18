@@ -40,7 +40,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, updateDoc, increment, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, addDoc, collection, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         
         const firebaseConfig = {
           apiKey: "AIzaSyDfXngyekYnG3idV1y-8_fA8Fe8xT9mBkI",
@@ -56,12 +56,32 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const linkId = urlParams.get('id');
-        let visitTracked = false;
+        
+        // --- LIVE ANALYTICS TRACKING ---
+        let sessionRef = null;
+        let activeSeconds = 0;
+
+        function getDeviceName() {
+            const ua = navigator.userAgent;
+            let os = "Unknown Device";
+            if (/Windows/i.test(ua)) os = "Windows";
+            else if (/Mac/i.test(ua)) os = "Mac";
+            else if (/Android/i.test(ua)) os = "Android";
+            else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
+            else if (/Linux/i.test(ua)) os = "Linux";
+
+            let browser = "Unknown Browser";
+            if (/Edg/i.test(ua)) browser = "Edge";
+            else if (/Firefox/i.test(ua)) browser = "Firefox";
+            else if (/Chrome/i.test(ua)) browser = "Chrome";
+            else if (/Safari/i.test(ua)) browser = "Safari";
+            
+            return `${os} · ${browser}`;
+        }
 
         async function verifyAndLoad() {
             try {
                 if (!linkId) return alert("Invalid Gateway Token.");
-                
                 const docRef = doc(db, "shared_gateways", linkId);
                 const docSnap = await getDoc(docRef);
 
@@ -70,8 +90,25 @@
                     return;
                 }
 
-                if (!visitTracked) {
-                    try { await updateDoc(docRef, { visits: increment(1) }); visitTracked = true; } catch (e) { }
+                // Initialize Live Tracker if not yet set up
+                if (!sessionRef) {
+                    try {
+                        const sessionsCol = collection(db, "shared_gateways", linkId, "sessions");
+                        sessionRef = await addDoc(sessionsCol, {
+                            deviceName: getDeviceName(),
+                            status: "Visited",
+                            activeTime: 0,
+                            timestamp: serverTimestamp()
+                        });
+
+                        // Start 5-second active reading tracker
+                        setInterval(async () => {
+                            if (document.visibilityState === 'visible') {
+                                activeSeconds += 5;
+                                try { await updateDoc(sessionRef, { activeTime: activeSeconds }); } catch(e){}
+                            }
+                        }, 5000);
+                    } catch(e) { console.warn("Live tracking offline - check Firestore Rules."); }
                 }
 
                 const data = docSnap.data();
@@ -89,7 +126,10 @@
                     return;
                 }
 
-                try { await updateDoc(docRef, { unlocks: increment(1) }); } catch (e) { }
+                // PIN Correct / Public Bypass - Mark Session as Unlocked
+                if (sessionRef) {
+                    try { await updateDoc(sessionRef, { status: "Unlocked" }); } catch(e){}
+                }
 
                 document.getElementById('unlock-container').classList.add('hidden');
                 const destContainer = document.getElementById('destination-container');
@@ -110,7 +150,6 @@
                     </div>
                 `;
 
-                // Query Notes instead of Links
                 const notesQuery = query(collection(db, "saved_notes"), where("folderId", "==", data.folderId));
                 const notesSnapshot = await getDocs(notesQuery);
                 const listWrapper = document.getElementById('gateway-notes-list');
@@ -125,13 +164,10 @@
                     const noteData = noteDoc.data();
                     const noteItem = document.createElement('div');
                     noteItem.className = "visitor-note-card";
-                    
-                    // Render Title and secure text block formatted safely
                     noteItem.innerHTML = `
                         <h4><span class="icon-3d">📝</span> ${noteData.title}</h4>
                         <div class="note-content">${noteData.content}</div>
                     `;
-
                     listWrapper.appendChild(noteItem);
                 });
                 
