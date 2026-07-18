@@ -81,8 +81,7 @@
             </header>
 
             <div class="workspace-area">
-                
-                <!-- NEW: Dedicated Note Composer -->
+                <!-- Dedicated Note Composer -->
                 <div id="compose-section" class="ui-card compose-card hidden">
                     <input type="text" id="note-title" class="ui-input seamless-title" placeholder="Note Title...">
                     <textarea id="note-content" class="ui-input seamless-body" placeholder="Start typing your secure note here..." rows="3"></textarea>
@@ -162,25 +161,32 @@
         </div>
     </div>
 
-    <!-- STATS OVERLAY MODAL -->
+    <!-- GRANULAR STATS MODAL -->
     <div id="stats-modal" class="modal hidden" style="z-index: 2500;">
         <div class="modal-overlay" id="stats-modal-backdrop" style="background: rgba(0,0,0,0.6);"></div>
-        <div class="modal-sheet ui-card" style="max-width: 350px;">
+        <div class="modal-sheet ui-card" style="max-width: 550px; width: 95%;">
             <div class="modal-sheet-header">
-                <h3>Gateway Analytics</h3>
-                <button id="close-stats-btn" class="close-pill">✕</button>
+                <h3><span class="icon-3d">📊</span> Live Analytics</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button id="refresh-stats-btn" class="btn-3d secondary small"><span class="icon-3d">🔄</span> Refresh</button>
+                    <button id="close-stats-btn" class="close-pill">✕</button>
+                </div>
             </div>
-            <div class="modal-sheet-body" style="text-align: center; gap: 2rem;">
-                <span class="icon-3d large-icon">📊</span>
-                <div style="display: flex; justify-content: space-around;">
-                    <div>
-                        <div style="font-size: 2rem; font-weight: 800; color: var(--primary);" id="stat-clicks">0</div>
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Visits</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 2rem; font-weight: 800; color: var(--accent);" id="stat-unlocks">0</div>
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Unlocks</div>
-                    </div>
+            <div class="modal-sheet-body" style="padding: 1rem;">
+                <div class="table-container">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>Status</th>
+                                <th>Active Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-table-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                    <p id="no-stats-msg" class="hidden" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">No sessions recorded for this gateway yet.</p>
                 </div>
             </div>
         </div>
